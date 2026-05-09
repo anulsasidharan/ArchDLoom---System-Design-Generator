@@ -1,16 +1,19 @@
 FROM python:3.11-slim
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH"
 
-COPY pyproject.toml alembic.ini ./
+COPY pyproject.toml uv.lock alembic.ini ./
 COPY app ./app/
 COPY alembic ./alembic/
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -e .
+RUN uv sync --frozen --no-dev
 
 EXPOSE 8000
 

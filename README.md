@@ -33,7 +33,7 @@ archdloom/
 ## Tooling Baseline
 
 - **Node workspaces** from the repository root for frontend workflows
-- **Python backend project config** via `backend/pyproject.toml`
+- **Python backend** via `backend/pyproject.toml` and `uv` (lockfile: `backend/uv.lock`)
 - **Editor consistency** via `.editorconfig`
 - **Task tracking** in `TASKS.md` by phase and branch
 
