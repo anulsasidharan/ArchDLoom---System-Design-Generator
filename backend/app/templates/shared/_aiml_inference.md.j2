@@ -1,0 +1,5 @@
+This design follows a **low-latency, real-time inference** template for {{ project_title }}.
+
+- **Serving**: autoscale inference replicas; enforce timeouts, concurrency limits, and request classification (interactive vs batch).
+- **Caching**: prefix/KV caching for repeated system prompts and stable contexts to cut tail latency.
+- **Reliability**: bulkheads between tenants, queues for overload shedding, and SLO dashboards on p95/p99 latency and error budgets.

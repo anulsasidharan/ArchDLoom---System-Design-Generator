@@ -8,7 +8,11 @@ from app.domain.components import (
     ComponentSummary,
     TradeOffSet,
 )
-from app.services.mermaid_generator import generate_architecture_mermaid, mermaid_category_to_node_ids
+from app.services.mermaid_generator import (
+    generate_aiml_supplementary_mermaid,
+    generate_architecture_mermaid,
+    mermaid_category_to_node_ids,
+)
 
 
 def _minimal_selection(pattern: ArchitecturePattern) -> ComponentSelectionResult:
@@ -49,3 +53,47 @@ def test_node_id_map_three_tier() -> None:
 def test_node_id_map_microservices() -> None:
     m = mermaid_category_to_node_ids(ArchitecturePattern.MICROSERVICES)
     assert m["compute"] == "SVC"
+
+
+def test_fine_tuning_diagram_contains_pipeline() -> None:
+    src = generate_architecture_mermaid(
+        _minimal_selection(ArchitecturePattern.FINE_TUNING_PIPELINE)
+    )
+    assert "Fine-tuning" in src or "fine-tuning" in src
+
+
+def test_realtime_inference_contains_inference() -> None:
+    src = generate_architecture_mermaid(
+        _minimal_selection(ArchitecturePattern.REALTIME_INFERENCE)
+    )
+    assert "Real-time inference" in src or "inference" in src.lower()
+
+
+def test_agentic_diagram_contains_agentic() -> None:
+    src = generate_architecture_mermaid(
+        _minimal_selection(ArchitecturePattern.AGENTIC_AI_SYSTEM)
+    )
+    assert "Agentic" in src
+
+
+def test_supplementary_sequence_for_rag() -> None:
+    seq = generate_aiml_supplementary_mermaid(
+        _minimal_selection(ArchitecturePattern.RAG_SYSTEM),
+        title="T",
+    )
+    assert "sequenceDiagram" in seq
+
+
+def test_supplementary_empty_for_three_tier() -> None:
+    assert (
+        generate_aiml_supplementary_mermaid(
+            _minimal_selection(ArchitecturePattern.THREE_TIER)
+        )
+        == ""
+    )
+
+
+def test_node_id_map_finetune() -> None:
+    m = mermaid_category_to_node_ids(ArchitecturePattern.FINE_TUNING_PIPELINE)
+    assert m.get("compute") == "ORCH"
+    assert m.get("llm_provider") == "BASE"

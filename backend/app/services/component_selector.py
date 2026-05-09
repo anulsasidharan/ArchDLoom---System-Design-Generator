@@ -15,6 +15,7 @@ from app.domain.components import (
     ComponentSummary,
     TradeOffSet,
 )
+from app.domain.generation import GenerationOptions
 from app.domain.requirements import ParsedRequirement
 from app.models.component import Component
 from app.repositories.component_repository import ComponentRepository
@@ -114,7 +115,81 @@ def _pick_top(
     return primary, alts
 
 
-def _infer_pattern(req: ParsedRequirement) -> ArchitecturePattern:
+_OPTION_TO_PATTERN: dict[str, ArchitecturePattern] = {
+    "rag": ArchitecturePattern.RAG_SYSTEM,
+    "fine_tuning": ArchitecturePattern.FINE_TUNING_PIPELINE,
+    "realtime_inference": ArchitecturePattern.REALTIME_INFERENCE,
+    "agentic": ArchitecturePattern.AGENTIC_AI_SYSTEM,
+}
+
+_HINT_TO_PATTERN: dict[str, ArchitecturePattern] = {
+    "rag": ArchitecturePattern.RAG_SYSTEM,
+    "fine_tuning": ArchitecturePattern.FINE_TUNING_PIPELINE,
+    "realtime_inference": ArchitecturePattern.REALTIME_INFERENCE,
+    "agentic": ArchitecturePattern.AGENTIC_AI_SYSTEM,
+}
+
+
+def _infer_pattern(
+    req: ParsedRequirement, options: GenerationOptions | None = None
+) -> ArchitecturePattern:
+    opts = options or GenerationOptions()
+    explicit = opts.aiml_architecture
+    if explicit != "auto" and explicit in _OPTION_TO_PATTERN:
+        return _OPTION_TO_PATTERN[explicit]
+
+    hint = (req.aiml_architecture_hint or "").strip().lower()
+    if hint in _HINT_TO_PATTERN:
+        return _HINT_TO_PATTERN[hint]
+
+    blob = " ".join(
+        [
+            req.summary or "",
+            " ".join(req.core_features),
+            *(f"{fr.name} {fr.description}" for fr in req.functional_requirements),
+        ]
+    ).lower()
+
+    if any(
+        x in blob
+        for x in (
+            "fine-tun",
+            "fine tun",
+            " sft",
+            "rlhf",
+            "lora",
+            "qlora",
+            "training pipeline",
+            "supervised fine-tuning",
+        )
+    ):
+        return ArchitecturePattern.FINE_TUNING_PIPELINE
+    if any(
+        x in blob
+        for x in (
+            "agentic",
+            "multi-agent",
+            "tool calling",
+            "agent orchestration",
+            "react agent",
+        )
+    ):
+        return ArchitecturePattern.AGENTIC_AI_SYSTEM
+    if any(
+        x in blob
+        for x in (
+            "real-time inference",
+            "realtime inference",
+            "low-latency inference",
+            "model serving",
+            "inference endpoint",
+            "online inference",
+        )
+    ):
+        return ArchitecturePattern.REALTIME_INFERENCE
+    if any(x in blob for x in ("rag", "retrieval augmented", "vector search", "embedding")):
+        return ArchitecturePattern.RAG_SYSTEM
+
     t = " ".join(req.core_features).lower()
     if req.has_ai_features or "rag" in t or "embedding" in t:
         return ArchitecturePattern.RAG_SYSTEM
@@ -125,19 +200,34 @@ def _infer_pattern(req: ParsedRequirement) -> ArchitecturePattern:
     return ArchitecturePattern.THREE_TIER
 
 
+def _needs_ai_component_categories(pattern: ArchitecturePattern) -> bool:
+    return pattern in (
+        ArchitecturePattern.RAG_SYSTEM,
+        ArchitecturePattern.FINE_TUNING_PIPELINE,
+        ArchitecturePattern.REALTIME_INFERENCE,
+        ArchitecturePattern.AGENTIC_AI_SYSTEM,
+    )
+
+
 class ComponentSelector:
     def __init__(self, session: Session, client: ClaudeClient) -> None:
         self._repo = ComponentRepository(session)
         self._client = client
 
-    def select(self, requirements: ParsedRequirement) -> ComponentSelectionResult:
+    def select(
+        self,
+        requirements: ParsedRequirement,
+        options: GenerationOptions | None = None,
+    ) -> ComponentSelectionResult:
+        pattern = _infer_pattern(requirements, options)
         categories = list(_CATEGORIES_BASE)
-        if requirements.needs_async_processing:
+        if requirements.needs_async_processing or pattern in (
+            ArchitecturePattern.FINE_TUNING_PIPELINE,
+            ArchitecturePattern.AGENTIC_AI_SYSTEM,
+        ):
             categories.extend(_CATEGORIES_ASYNC)
-        if requirements.has_ai_features:
+        if requirements.has_ai_features or _needs_ai_component_categories(pattern):
             categories.extend(_CATEGORIES_AI)
-
-        pattern = _infer_pattern(requirements)
         selections: dict[str, ComponentDecision] = {}
         total_cost = 0.0
 

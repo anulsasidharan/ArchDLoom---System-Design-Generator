@@ -1,0 +1,6 @@
+This design follows a **retrieval-augmented generation (RAG)** template for {{ project_title }}.
+
+- **Ingestion**: chunk source documents, enrich metadata, embed with the selected embedding model, and upsert vectors into the vector index with idempotent writes.
+- **Query path**: retrieve top-k chunks (optionally rerank), assemble a grounded prompt with citations, call the LLM, and return answers with traceable sources.
+- **Stores**: transactional metadata and user/session state in the primary database; hot answers or embedding caches in the cache tier where appropriate.
+- **Operations**: monitor retrieval hit rate, chunk drift, embedding latency, and LLM token usage; alert on freshness SLAs for indexed corpora.

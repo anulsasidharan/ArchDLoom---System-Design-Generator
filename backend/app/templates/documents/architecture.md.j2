@@ -19,6 +19,12 @@
 
 {% include "shared/_compliance.md.j2" %}
 
+{% if aiml_template_block %}
+## AI/ML architecture template
+
+{{ aiml_template_block }}
+{% endif %}
+
 ## Component decisions
 
 {% for key, row in component_rows %}
@@ -49,6 +55,16 @@ The same source ships as `architecture.mmd` for tooling and reviews.
 ```mermaid
 {{ mermaid_source }}
 ```
+
+{% if supplementary_mermaid %}
+## AI/ML flow sequence
+
+Companion diagram emphasizing request/training/agent sequencing (also shipped as `architecture-flow.mmd` when generated).
+
+```mermaid
+{{ supplementary_mermaid }}
+```
+{% endif %}
 
 ## Operational notes
 

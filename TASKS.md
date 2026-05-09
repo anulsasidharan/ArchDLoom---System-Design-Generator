@@ -66,12 +66,12 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 
 | Task | Branch | Status |
 | --- | --- | --- |
-| P5-1 · RAG architecture template | feature/p5-template-rag | ⬜ todo |
-| P5-2 · Fine-tuning pipeline template | feature/p5-template-finetuning | ⬜ todo |
-| P5-3 · Real-time inference template | feature/p5-template-inference | ⬜ todo |
-| P5-4 · Agentic AI system template | feature/p5-template-agents | ⬜ todo |
-| P5-5 · Seed AI/ML components (vector DB, LLM, embeddings) | feature/p5-aiml-component-seed | ⬜ todo |
-| P5-6 · AI-specific Mermaid/diagram patterns | feature/p5-aiml-diagram-patterns | ⬜ todo |
+| P5-1 · RAG architecture template | feature/p5-template-rag | ✅ done |
+| P5-2 · Fine-tuning pipeline template | feature/p5-template-finetuning | ✅ done |
+| P5-3 · Real-time inference template | feature/p5-template-inference | ✅ done |
+| P5-4 · Agentic AI system template | feature/p5-template-agents | ✅ done |
+| P5-5 · Seed AI/ML components (vector DB, LLM, embeddings) | feature/p5-aiml-component-seed | ✅ done |
+| P5-6 · AI-specific Mermaid/diagram patterns | feature/p5-aiml-diagram-patterns | ✅ done |
 
 ---
 

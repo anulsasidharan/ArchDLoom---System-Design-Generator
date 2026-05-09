@@ -10,6 +10,9 @@ class ArchitecturePattern(str, Enum):
     THREE_TIER = "three_tier_web_app"
     MICROSERVICES = "microservices"
     RAG_SYSTEM = "rag_system"
+    FINE_TUNING_PIPELINE = "fine_tuning_pipeline"
+    REALTIME_INFERENCE = "realtime_inference"
+    AGENTIC_AI_SYSTEM = "agentic_ai_system"
     EVENT_DRIVEN = "event_driven"
     GENERIC = "generic"
 

@@ -25,7 +25,10 @@ from app.services.diagram_renderer import render_architecture_diagram_svg
 from app.services.evolution_generator import generate_evolution_markdown
 from app.services.hld_generator import generate_hld_docx
 from app.services.lld_generator import generate_lld_docx
-from app.services.mermaid_generator import generate_architecture_mermaid
+from app.services.mermaid_generator import (
+    generate_aiml_supplementary_mermaid,
+    generate_architecture_mermaid,
+)
 from app.services.prd_generator import generate_prd_docx
 from app.services.requirement_parser import RequirementParser
 from app.workers.celery_app import celery_app
@@ -107,7 +110,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
 
     selector = ComponentSelector(db, client)
     try:
-        selection = selector.select(parsed)
+        selection = selector.select(parsed, options)
     except Exception as e:
         logger.exception("Component selection failed")
         _fail_job(db, job, f"Component selection failed: {e}")
@@ -120,6 +123,10 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     db.commit()
 
     mermaid = generate_architecture_mermaid(selection, title=parsed.system_name)
+    flow_mermaid = generate_aiml_supplementary_mermaid(
+        selection,
+        title=parsed.system_name or "Architecture",
+    )
 
     job.progress = 62
     job.current_step = "render_architecture_markdown"
@@ -131,6 +138,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
             selection,
             mermaid_source=mermaid,
             project_title=parsed.system_name,
+            supplementary_mermaid=flow_mermaid or None,
         )
         evolution_md = generate_evolution_markdown(
             parsed,
@@ -207,6 +215,8 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         "architecture.svg": enhanced_svg.encode("utf-8"),
         "architecture.png": diagram_png,
     }
+    if flow_mermaid.strip():
+        bundle_files["architecture-flow.mmd"] = flow_mermaid.encode("utf-8")
 
     try:
         bundle_zip = build_zip_bundle(bundle_files)
@@ -222,7 +232,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     zip_b64 = base64.standard_b64encode(bundle_zip).decode("ascii")
 
     svg_b64 = base64.standard_b64encode(enhanced_svg.encode("utf-8")).decode("ascii")
-    project.generated_files = {
+    gen_files: dict[str, dict[str, str]] = {
         "prd.docx": {"encoding": "base64", "data": prd_b64},
         "hld.docx": {"encoding": "base64", "data": hld_b64},
         "lld.docx": {"encoding": "base64", "data": lld_b64},
@@ -233,6 +243,9 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         "architecture.png": {"encoding": "base64", "data": png_b64},
         "bundle.zip": {"encoding": "base64", "data": zip_b64},
     }
+    if flow_mermaid.strip():
+        gen_files["architecture-flow.mmd"] = {"encoding": "text", "data": flow_mermaid}
+    project.generated_files = gen_files
     project.status = "completed"
 
     job.status = "completed"

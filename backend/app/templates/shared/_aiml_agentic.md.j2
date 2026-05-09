@@ -1,0 +1,6 @@
+This design follows an **agentic AI** template (planner + tools) for {{ project_title }}.
+
+- **Orchestration**: explicit policy for max steps, tool allowlists, and human-in-the-loop escalation on high-risk actions.
+- **Memory**: short-term session state in the primary store; long-horizon recall via the vector tier when configured.
+- **Tools**: isolate executors with least privilege, audit each invocation, and route heavy fan-out through async queues when needed.
+- **Safety**: trace spans per turn, redact secrets in logs, and monitor tool failure rates and loop exits.
