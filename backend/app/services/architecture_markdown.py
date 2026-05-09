@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 from app.domain.components import ArchitecturePattern, ComponentSelectionResult
+from app.domain.enterprise import (
+    ComplianceMapping,
+    CostEstimate,
+    HADRStrategy,
+    ObservabilityPlan,
+    SecurityPlan,
+)
 from app.domain.requirements import ParsedRequirement
 from app.services.jinja_env import render_template
 
@@ -28,6 +35,12 @@ def generate_architecture_markdown(
     mermaid_source: str,
     project_title: str | None = None,
     supplementary_mermaid: str | None = None,
+    network_mermaid: str | None = None,
+    cost: CostEstimate | None = None,
+    compliance_mapping: ComplianceMapping | None = None,
+    security: SecurityPlan | None = None,
+    hadr: HADRStrategy | None = None,
+    observability: ObservabilityPlan | None = None,
 ) -> str:
     title = project_title or requirements.system_name
     summary = requirements.summary or (
@@ -39,6 +52,7 @@ def generate_architecture_markdown(
         project_title=title,
     )
     supp = (supplementary_mermaid or "").strip()
+    net = (network_mermaid or "").strip()
     return render_template(
         "documents/architecture.md.j2",
         project_title=title,
@@ -52,6 +66,12 @@ def generate_architecture_markdown(
         mermaid_source=mermaid_source.strip(),
         aiml_template_block=aiml_block,
         supplementary_mermaid=supp,
+        network_mermaid=net,
+        cost=cost,
+        compliance_mapping=compliance_mapping,
+        security=security,
+        hadr=hadr,
+        observability=observability,
         total_cost=components.total_monthly_cost_usd,
         needs_async=requirements.needs_async_processing,
         has_ai=requirements.has_ai_features,

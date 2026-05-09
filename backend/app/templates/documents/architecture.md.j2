@@ -66,6 +66,42 @@ Companion diagram emphasizing request/training/agent sequencing (also shipped as
 ```
 {% endif %}
 
+{% if network_mermaid %}
+## Network architecture
+
+{% include "shared/_network.md.j2" %}
+{% endif %}
+
+{% if cost %}
+## Cost estimation
+
+{% include "shared/_cost_breakdown.md.j2" %}
+{% endif %}
+
+{% if compliance_mapping %}
+## Compliance mapping
+
+{% include "shared/_compliance_detail.md.j2" %}
+{% endif %}
+
+{% if security %}
+## Security architecture
+
+{% include "shared/_security.md.j2" %}
+{% endif %}
+
+{% if hadr %}
+## High availability & disaster recovery
+
+{% include "shared/_hadr.md.j2" %}
+{% endif %}
+
+{% if observability %}
+## Monitoring & observability
+
+{% include "shared/_observability.md.j2" %}
+{% endif %}
+
 ## Operational notes
 
 - Estimated aggregate component cost (library baseline): {% if total_cost is not none %}**${{ "{:,.0f}".format(total_cost) }}**/month{% else %}*not computed*{% endif %}.

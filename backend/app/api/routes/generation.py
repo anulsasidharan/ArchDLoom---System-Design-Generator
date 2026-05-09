@@ -148,6 +148,9 @@ def _artifact_zip_bytes(files: dict[str, Any]) -> bytes:
         "architecture-flow.mmd",
         "architecture.svg",
         "architecture.png",
+        "network.mmd",
+        "network.svg",
+        "network.png",
     )
     raw: dict[str, bytes] = {}
     for key in keys:

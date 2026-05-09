@@ -1,0 +1,12 @@
+A logical network view of {{ project_title }} below — translate into VPC/CIDR allocations, security groups, and PrivateLink endpoints during cloud setup. The same source ships as `network.mmd`.
+
+```mermaid
+{{ network_mermaid }}
+```
+
+**Boundaries**
+
+- Public subnets host only ingress endpoints (ALB / API Gateway / NAT).
+- Private subnets host stateless compute and caches; default-deny east-west.
+- Data subnets host stateful tiers (databases, vector stores, brokers); accessible only from approved app-tier security groups.
+- All outbound internet traffic egresses via NAT / proxy with allow-listed destinations.

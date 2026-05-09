@@ -1,0 +1,31 @@
+**Targets**
+
+- **Availability:** {{ hadr.availability_target }}
+- **RTO:** {{ hadr.rto }}
+- **RPO:** {{ hadr.rpo }}
+
+**Recommended posture:** `{{ hadr.posture }}`{% if hadr.posture_rationale %} — {{ hadr.posture_rationale }}{% endif %}.
+
+### Recommendations
+
+{% for r in hadr.recommendations %}
+- {{ r }}
+{% endfor %}
+
+### Backup strategy
+
+{% for b in hadr.backup_strategy %}
+- {{ b }}
+{% endfor %}
+
+### Drill cadence
+
+{% for d in hadr.drills %}
+- {{ d }}
+{% endfor %}
+
+### Failover runbook (outline)
+
+{% for step in hadr.failover_runbook %}
+{{ loop.index }}. {{ step }}
+{% endfor %}

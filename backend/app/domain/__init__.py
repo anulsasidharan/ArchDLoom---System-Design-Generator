@@ -8,6 +8,18 @@ from app.domain.components import (
     ComponentSummary,
     TradeOffSet,
 )
+from app.domain.enterprise import (
+    ComplianceControl,
+    ComplianceFramework,
+    ComplianceMapping,
+    CostEstimate,
+    CostLineItem,
+    CostPhaseProjection,
+    HADRStrategy,
+    ObservabilityPillar,
+    ObservabilityPlan,
+    SecurityPlan,
+)
 from app.domain.generation import GenerationJobStatus, GenerationOptions
 from app.domain.requirements import (
     ComplianceNeed,
@@ -21,17 +33,27 @@ from app.domain.requirements import (
 
 __all__ = [
     "ArchitecturePattern",
+    "ComplianceControl",
+    "ComplianceFramework",
+    "ComplianceMapping",
     "ComplianceNeed",
     "ComponentAlternative",
     "ComponentDecision",
     "ComponentSelectionResult",
     "ComponentSummary",
+    "CostEstimate",
+    "CostLineItem",
+    "CostPhaseProjection",
     "FunctionalRequirement",
     "GenerationJobStatus",
     "GenerationOptions",
+    "HADRStrategy",
     "NonFunctionalRequirements",
+    "ObservabilityPillar",
+    "ObservabilityPlan",
     "ParsedRequirement",
     "ScaleMetrics",
+    "SecurityPlan",
     "SuccessMetric",
     "TradeOffSet",
     "UserStory",

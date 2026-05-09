@@ -1,0 +1,65 @@
+### Authentication
+
+{% for item in security.authentication %}
+- {{ item }}
+{% endfor %}
+
+### Authorization
+
+{% for item in security.authorization %}
+- {{ item }}
+{% endfor %}
+
+### IAM principles
+
+{% for item in security.iam_principles %}
+- {{ item }}
+{% endfor %}
+
+### Encryption — at rest
+
+{% for item in security.encryption_at_rest %}
+- {{ item }}
+{% endfor %}
+
+### Encryption — in transit
+
+{% for item in security.encryption_in_transit %}
+- {{ item }}
+{% endfor %}
+
+### Network security
+
+{% for item in security.network_security %}
+- {{ item }}
+{% endfor %}
+
+### Secrets management
+
+{% for item in security.secrets_management %}
+- {{ item }}
+{% endfor %}
+
+### Audit logging
+
+{% for item in security.audit_logging %}
+- {{ item }}
+{% endfor %}
+
+### Application security
+
+{% for item in security.application_security %}
+- {{ item }}
+{% endfor %}
+
+### Data protection
+
+{% for item in security.data_protection %}
+- {{ item }}
+{% endfor %}
+
+### Threat-model notes
+
+{% for item in security.threat_model_notes %}
+- {{ item }}
+{% endfor %}
