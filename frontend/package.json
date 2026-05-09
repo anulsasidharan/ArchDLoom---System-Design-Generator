@@ -1,0 +1,14 @@
+{
+  "name": "archdloom-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "echo \"Frontend app not bootstrapped yet\"",
+    "build": "echo \"Frontend build not configured yet\"",
+    "start": "echo \"Frontend start not configured yet\"",
+    "lint": "echo \"Frontend lint not configured yet\"",
+    "test": "echo \"No frontend tests configured yet\""
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

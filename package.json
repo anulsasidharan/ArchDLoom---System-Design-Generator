@@ -1,0 +1,19 @@
+{
+  "name": "archdloom",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build:frontend": "npm run build --workspace frontend",
+    "lint:frontend": "npm run lint --workspace frontend",
+    "test:frontend": "npm run test --workspace frontend",
+    "lint": "npm run lint:frontend",
+    "test": "npm run test:frontend"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+}
