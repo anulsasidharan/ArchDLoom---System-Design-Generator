@@ -37,6 +37,15 @@ class JobStatusResponse(BaseModel):
     error_message: str | None = None
 
 
+class JobPreviewResponse(BaseModel):
+    """Artifacts for diagram viewer + component detail panel (completed jobs)."""
+
+    status: str
+    mermaid: str | None = None
+    svg: str | None = None
+    component_selections: dict[str, Any] = Field(default_factory=dict)
+
+
 def _preview_title(text: str, max_len: int = 120) -> str:
     line = text.strip().split("\n")[0].strip()
     if not line:
@@ -78,6 +87,42 @@ def job_status(job_id: UUID, db: Session = Depends(get_db)) -> JobStatusResponse
     )
 
 
+def _decode_generated_text(files: dict[str, Any], key: str) -> str | None:
+    entry = files.get(key)
+    if not isinstance(entry, dict):
+        return None
+    enc = entry.get("encoding")
+    data = entry.get("data")
+    if enc == "text" and isinstance(data, str):
+        return data
+    if enc == "base64" and isinstance(data, str):
+        return base64.standard_b64decode(data).decode("utf-8")
+    return None
+
+
+@router.get("/jobs/{job_id}/preview", response_model=JobPreviewResponse)
+def job_preview(job_id: UUID, db: Session = Depends(get_db)) -> JobPreviewResponse:
+    job = db.get(GenerationJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.project_id is None:
+        raise HTTPException(status_code=404, detail="Project not linked to job")
+    project = db.get(Project, job.project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    files = dict(project.generated_files or {})
+    mermaid = _decode_generated_text(files, "architecture.mmd")
+    svg = _decode_generated_text(files, "architecture.svg")
+    selections = project.component_selections if isinstance(project.component_selections, dict) else {}
+    return JobPreviewResponse(
+        status=job.status,
+        mermaid=mermaid,
+        svg=svg,
+        component_selections=selections,
+    )
+
+
 def _decode_generated_blob(entry: dict[str, Any]) -> bytes:
     enc = entry.get("encoding")
     data = entry.get("data")
@@ -100,6 +145,7 @@ def _artifact_zip_bytes(files: dict[str, Any]) -> bytes:
         "architecture.md",
         "evolution.md",
         "architecture.mmd",
+        "architecture.svg",
         "architecture.png",
     )
     raw: dict[str, bytes] = {}
