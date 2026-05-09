@@ -40,7 +40,7 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 | Task | Branch | Status |
 | --- | --- | --- |
 | P3-1 · Jinja2 templates layer (shared text blocks) | feature/p3-jinja-templates | ✅ done |
-| P3-2 · HLD Word generator | feature/p3-hld-generator | ⬜ todo |
+| P3-2 · HLD Word generator | feature/p3-hld-generator | ✅ done |
 | P3-3 · LLD Word generator | feature/p3-lld-generator | ✅ done |
 | P3-4 · Evolution markdown generator | feature/p3-evolution-generator | ✅ done |
 | P3-5 · Pipeline: `architecture.md` + five-artifact orchestration | feature/p3-architecture-md-pipeline | ✅ done |
