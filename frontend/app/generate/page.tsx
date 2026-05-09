@@ -2,11 +2,21 @@
 
 import { ComponentDetailPanel } from "@/components/ComponentDetailPanel";
 import { DiagramViewer } from "@/components/DiagramViewer";
+import { DocumentPreviewGrid } from "@/components/DocumentPreviewCard";
+import { DownloadPanel } from "@/components/DownloadPanel";
+import { GenerationProgress } from "@/components/GenerationProgress";
 import { Button } from "@/components/ui/button";
 import type { JobPreviewResponse, JobStatusResponse } from "@/lib/types";
+import { Sparkles, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const POLL_MS = 1200;
+
+const EXAMPLE_PROMPTS = [
+  "Design a RAG-based internal knowledge assistant for a 500-person company using PostgreSQL and AWS infrastructure, targeting 99.9% uptime.",
+  "Build a real-time fraud detection system for a fintech startup processing 10,000 transactions per second with GDPR compliance.",
+  "Create a multi-tenant SaaS platform for healthcare data analytics with HIPAA compliance and 1M monthly active users.",
+];
 
 export default function GeneratePage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -44,14 +54,10 @@ export default function GeneratePage() {
         const st = (await res.json()) as JobStatusResponse;
         if (stop) return;
         setStatus(st);
-        if (st.status === "completed") {
-          await fetchPreview(jobId);
-        }
-        if (st.status === "failed") {
-          setError(st.error_message ?? "Generation failed");
-        }
+        if (st.status === "completed") await fetchPreview(jobId);
+        if (st.status === "failed") setError(st.error_message ?? "Generation failed");
       } catch {
-        /* ignore transient network errors while polling */
+        /* ignore transient network errors */
       }
     };
 
@@ -93,75 +99,198 @@ export default function GeneratePage() {
   };
 
   const activeDecision = selectedCategory ? (selections[selectedCategory] ?? null) : null;
+  const isCompleted = preview?.status === "completed";
+  const isInProgress = Boolean(jobId) && !isCompleted && status?.status !== "failed";
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-10 md:px-8">
-      <div className="mb-8 space-y-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Phase 4 · Diagrams</p>
-        <h1 className="font-serif text-3xl font-semibold tracking-tight">Generate & preview architecture</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Submit a design brief; when the job completes, inspect the overlaid SVG or a client-side Mermaid render, and
-          open component trade-offs.
+    <main className="mx-auto min-h-dvh max-w-6xl px-4 py-10 sm:px-6">
+      {/* Header */}
+      <div className="mb-8 space-y-2 animate-fade-in">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>ArchDLoom</span>
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <span className="text-foreground">Generate</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Generate System Design
+        </h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Describe your system requirements in natural language. Claude AI will parse, select
+          components, and generate PRD, HLD, LLD, and architecture diagrams.
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="mb-10 space-y-4">
-        <label className="block text-sm font-medium">Requirement</label>
-        <textarea
-          value={requirement}
-          onChange={(e) => setRequirement(e.target.value)}
-          rows={6}
-          placeholder="e.g. Design a RAG assistant for internal docs with PostgreSQL and Redis…"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          required
-        />
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={busy || !requirement.trim()}>
-            {busy ? "Starting…" : "Generate"}
-          </Button>
-          {jobId ? (
-            <span className="text-sm text-muted-foreground">
-              Job <code className="rounded bg-muted px-1">{jobId}</code>
-            </span>
-          ) : null}
-        </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {status ? (
-          <p className="text-sm text-muted-foreground">
-            Status: <span className="font-medium text-foreground">{status.status}</span>
-            {status.progress != null ? ` · ${status.progress}%` : null}
-            {status.current_step ? ` · ${status.current_step}` : null}
-          </p>
-        ) : null}
-      </form>
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        {/* Main column */}
+        <div className="space-y-6">
+          {/* Input form */}
+          <form onSubmit={onSubmit} className="rounded-xl border border-border/60 bg-card p-6 space-y-4">
+            <label htmlFor="requirement" className="block text-sm font-medium text-foreground">
+              System Requirement{" "}
+              <span className="text-muted-foreground font-normal">(required)</span>
+            </label>
+            <textarea
+              id="requirement"
+              value={requirement}
+              onChange={(e) => setRequirement(e.target.value)}
+              rows={6}
+              placeholder="e.g. Design a RAG assistant for internal docs with 100K users, PostgreSQL + Redis, deployed on AWS, targeting 99.9% uptime and GDPR compliance…"
+              className="w-full resize-none rounded-lg border border-input bg-muted/30 px-3 py-2.5 text-sm text-foreground shadow-sm outline-none ring-offset-background placeholder:text-muted-foreground/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring transition"
+              aria-describedby="req-helper"
+              required
+            />
+            <p id="req-helper" className="text-xs text-muted-foreground">
+              Include scale (users, requests/sec), domain, tech preferences, and compliance needs for best results.
+            </p>
 
-      {preview?.status === "completed" ? (
-        <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-          <DiagramViewer mermaid={preview.mermaid} svg={preview.svg} title="Architecture" />
-
-          <div className="space-y-3">
-            <p className="text-sm font-medium">Components</p>
-            <ul className="space-y-1">
-              {categories.map((c) => (
-                <li key={c}>
+            {/* Example prompts */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Try an example:</p>
+              <div className="flex flex-wrap gap-2">
+                {EXAMPLE_PROMPTS.map((prompt, i) => (
                   <button
+                    key={i}
                     type="button"
-                    onClick={() => setSelectedCategory(c)}
-                    className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition hover:bg-muted ${
-                      selectedCategory === c ? "border-primary bg-muted/60" : "border-transparent"
-                    }`}
+                    onClick={() => setRequirement(prompt)}
+                    className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground transition hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <span className="font-medium capitalize">{c.replace(/_/g, " ")}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {selections[c]?.selected.name}
-                    </span>
+                    {["RAG Assistant", "Fraud Detection", "Healthcare SaaS"][i]}
                   </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Button
+                type="submit"
+                disabled={busy || !requirement.trim() || isInProgress}
+                aria-busy={busy}
+                className="bg-green-500 text-slate-950 hover:bg-green-400 font-semibold glow-green-sm disabled:opacity-50"
+              >
+                <Sparkles className="mr-2 h-4 w-4" aria-hidden />
+                {busy ? "Starting…" : isInProgress ? "Generating…" : "Generate Design"}
+              </Button>
+              {jobId && (
+                <p className="text-xs text-muted-foreground">
+                  Job{" "}
+                  <code className="rounded bg-muted px-1 font-mono">{jobId.slice(0, 8)}</code>
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2" role="alert">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+          </form>
+
+          {/* Progress */}
+          {status && !isCompleted && (
+            <div className="animate-fade-in">
+              <GenerationProgress status={status} />
+            </div>
+          )}
+
+          {/* Diagram viewer */}
+          {isCompleted && preview && (
+            <div className="animate-fade-in space-y-6">
+              <DiagramViewer mermaid={preview.mermaid} svg={preview.svg} title="Architecture Diagram" />
+
+              {/* Component selector */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-foreground">Component Selections</p>
+                <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="list">
+                  {categories.map((c) => (
+                    <li key={c}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCategory(c)}
+                        className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                          selectedCategory === c
+                            ? "border-green-500/40 bg-green-500/10 text-foreground"
+                            : "border-border/60 bg-card hover:border-border hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                        }`}
+                        aria-pressed={selectedCategory === c}
+                      >
+                        <span className="block font-medium capitalize text-foreground">
+                          {c.replace(/_/g, " ")}
+                        </span>
+                        <span className="block text-xs text-muted-foreground mt-0.5 truncate">
+                          {selections[c]?.selected.name}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Document previews */}
+              <DocumentPreviewGrid />
+            </div>
+          )}
         </div>
-      ) : null}
+
+        {/* Sidebar */}
+        <aside className="space-y-5">
+          {/* Generation guide */}
+          {!jobId && (
+            <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
+              <p className="text-sm font-semibold text-foreground">What gets generated</p>
+              <ul className="space-y-3" role="list">
+                {[
+                  { label: "PRD", desc: "Business requirements & user stories" },
+                  { label: "HLD", desc: "System architecture & component rationale" },
+                  { label: "LLD", desc: "Schema design & service internals" },
+                  { label: "Evolution", desc: "MVP → Growth → Enterprise roadmap" },
+                  { label: "Diagrams", desc: "Architecture with real vendor icons" },
+                ].map((item) => (
+                  <li key={item.label} className="flex items-start gap-3 text-xs">
+                    <span className="mt-0.5 inline-flex h-5 w-8 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground font-mono font-medium">
+                      {item.label.slice(0, 3)}
+                    </span>
+                    <span className="text-muted-foreground">{item.desc}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground border-t border-border/60 pt-3">
+                Average generation time: <span className="text-foreground font-medium">2–3 minutes</span>
+              </p>
+            </div>
+          )}
+
+          {/* Download panel when complete */}
+          {isCompleted && jobId && (
+            <div className="animate-fade-in">
+              <DownloadPanel jobId={jobId} apiBase={base} />
+            </div>
+          )}
+
+          {/* In-progress status sidebar */}
+          {isInProgress && status && (
+            <div className="rounded-xl border border-border/60 bg-card p-5 animate-fade-in">
+              <p className="text-sm font-semibold text-foreground mb-3">Generation status</p>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Status</span>
+                  <span className="text-foreground font-medium capitalize">{status.status}</span>
+                </div>
+                {status.progress != null && (
+                  <div className="flex justify-between">
+                    <span>Progress</span>
+                    <span className="text-green-400 tabular-nums font-medium">{status.progress}%</span>
+                  </div>
+                )}
+                {status.current_step && (
+                  <div className="pt-1 border-t border-border/40">
+                    <p className="text-foreground">{status.current_step}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
 
       <ComponentDetailPanel
         category={selectedCategory}
