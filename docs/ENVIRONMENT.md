@@ -35,8 +35,8 @@ ArchDLoom reads configuration from the process environment and optional `.env` f
 
 - Copy the root `.env.example` to `.env` and adjust ports if needed.
 - Run Postgres and Redis via `docker compose up -d db redis`.
-- From `backend/`, install with `pip install -e ".[dev]"` and run `alembic upgrade head` with `DATABASE_URL` pointing at the local database.
-- Start the API with `uvicorn app.main:app --reload` from `backend/`.
+- From `backend/`, install with `uv sync --extra dev` (see [`uv`](https://docs.astral.sh/uv/)) and run `uv run alembic upgrade head` with `DATABASE_URL` pointing at the local database.
+- Start the API with `uv run uvicorn app.main:app --reload` from `backend/`.
 - From the repo root, `npm install` then `npm run dev:frontend` for the Next.js app.
 
 ## Security notes
