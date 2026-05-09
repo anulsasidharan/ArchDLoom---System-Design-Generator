@@ -24,14 +24,14 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 
 | Task | Branch | Status |
 | --- | --- | --- |
-| P2-1 · Shared domain models & SQLAlchemy foundations | feature/p2-domain-orm-base | ⬜ todo |
-| P2-2 · Claude API client wrapper & errors | feature/p2-claude-client | ⬜ todo |
-| P2-3 · Requirement parser service + Pydantic I/O | feature/p2-requirement-parser | ⬜ todo |
-| P2-4 · Component table + repository + seed script | feature/p2-component-library-data | ⬜ todo |
-| P2-5 · Component selector + rationale/trade-offs | feature/p2-component-selector | ⬜ todo |
-| P2-6 · PRD-only document generator (python-docx) | feature/p2-prd-generator | ⬜ todo |
-| P2-7 · Basic Mermaid diagram code generator | feature/p2-mermaid-basic | ⬜ todo |
-| P2-8 · Celery worker + generation job API + status polling | feature/p2-async-jobs-api | ⬜ todo |
+| P2-1 · Shared domain models & SQLAlchemy foundations | feature/p2-domain-orm-base | ✅ done |
+| P2-2 · Claude API client wrapper & errors | feature/p2-claude-client | ✅ done |
+| P2-3 · Requirement parser service + Pydantic I/O | feature/p2-requirement-parser | ✅ done |
+| P2-4 · Component table + repository + seed script | feature/p2-component-library-data | ✅ done |
+| P2-5 · Component selector + rationale/trade-offs | feature/p2-component-selector | ✅ done |
+| P2-6 · PRD-only document generator (python-docx) | feature/p2-prd-generator | ✅ done |
+| P2-7 · Basic Mermaid diagram code generator | feature/p2-mermaid-basic | ✅ done |
+| P2-8 · Celery worker + generation job API + status polling | feature/p2-async-jobs-api | ✅ done |
 
 ---
 
