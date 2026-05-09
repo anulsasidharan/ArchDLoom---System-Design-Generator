@@ -1,0 +1,15 @@
+{% if scale.daily_active_users is not none %}
+- **Daily active users (inferred):** {{ "{:,}".format(scale.daily_active_users) }}
+{% endif %}
+{% if scale.peak_requests_per_second is not none %}
+- **Peak RPS:** {{ scale.peak_requests_per_second }}
+{% endif %}
+{% if scale.data_volume_gb is not none %}
+- **Data volume (GB):** {{ scale.data_volume_gb }}
+{% endif %}
+{% if scale.mvp_users is not none %}
+- **MVP ceiling:** {{ "{:,}".format(scale.mvp_users) }} users
+{% endif %}
+{% if scale.growth_users is not none %}
+- **Growth ceiling:** {{ "{:,}".format(scale.growth_users) }} users
+{% endif %}

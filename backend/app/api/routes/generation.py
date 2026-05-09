@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import base64
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -12,6 +15,7 @@ from app.db.session import get_db
 from app.domain.generation import GenerationOptions
 from app.models.generation_job import GenerationJob
 from app.models.project import Project
+from app.services.artifact_bundle import build_zip_bundle
 from app.workers.tasks import run_generation_job
 
 router = APIRouter(tags=["generation"])
@@ -71,4 +75,61 @@ def job_status(job_id: UUID, db: Session = Depends(get_db)) -> JobStatusResponse
         progress=job.progress,
         current_step=job.current_step,
         error_message=job.error_message,
+    )
+
+
+def _decode_generated_blob(entry: dict[str, Any]) -> bytes:
+    enc = entry.get("encoding")
+    data = entry.get("data")
+    if enc == "base64" and isinstance(data, str):
+        return base64.standard_b64decode(data)
+    if enc == "text" and isinstance(data, str):
+        return data.encode("utf-8")
+    raise HTTPException(status_code=500, detail="Malformed generated artifact entry")
+
+
+def _artifact_zip_bytes(files: dict[str, Any]) -> bytes:
+    bundle = files.get("bundle.zip")
+    if isinstance(bundle, dict) and bundle.get("encoding") == "base64":
+        return _decode_generated_blob(bundle)
+
+    keys = (
+        "prd.docx",
+        "lld.docx",
+        "architecture.md",
+        "evolution.md",
+        "architecture.mmd",
+        "architecture.png",
+    )
+    raw: dict[str, bytes] = {}
+    for key in keys:
+        entry = files.get(key)
+        if isinstance(entry, dict):
+            raw[key] = _decode_generated_blob(entry)
+    if not raw:
+        raise HTTPException(status_code=404, detail="No downloadable artifacts on project")
+    return build_zip_bundle(raw)
+
+
+@router.get("/jobs/{job_id}/download")
+def download_job_bundle(job_id: UUID, db: Session = Depends(get_db)) -> Response:
+    job = db.get(GenerationJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status != "completed":
+        raise HTTPException(status_code=409, detail="Job not completed yet")
+    if job.project_id is None:
+        raise HTTPException(status_code=404, detail="Project missing for job")
+
+    project = db.get(Project, job.project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    files = dict(project.generated_files or {})
+    payload = _artifact_zip_bytes(files)
+    filename = f"archdloom-{job_id}.zip"
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

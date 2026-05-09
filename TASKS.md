@@ -39,13 +39,13 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 
 | Task | Branch | Status |
 | --- | --- | --- |
-| P3-1 · Jinja2 templates layer (shared text blocks) | feature/p3-jinja-templates | ⬜ todo |
+| P3-1 · Jinja2 templates layer (shared text blocks) | feature/p3-jinja-templates | ✅ done |
 | P3-2 · HLD Word generator | feature/p3-hld-generator | ⬜ todo |
-| P3-3 · LLD Word generator | feature/p3-lld-generator | ⬜ todo |
-| P3-4 · Evolution markdown generator | feature/p3-evolution-generator | ⬜ todo |
-| P3-5 · Pipeline: `architecture.md` + five-artifact orchestration | feature/p3-architecture-md-pipeline | ⬜ todo |
-| P3-6 · Diagram embedding in Word (PNG/SVG bridge) | feature/p3-diagram-docx-embed | ⬜ todo |
-| P3-7 · ZIP bundle + download route | feature/p3-zip-download | ⬜ todo |
+| P3-3 · LLD Word generator | feature/p3-lld-generator | ✅ done |
+| P3-4 · Evolution markdown generator | feature/p3-evolution-generator | ✅ done |
+| P3-5 · Pipeline: `architecture.md` + five-artifact orchestration | feature/p3-architecture-md-pipeline | ✅ done |
+| P3-6 · Diagram embedding in Word (PNG/SVG bridge) | feature/p3-diagram-docx-embed | ✅ done |
+| P3-7 · ZIP bundle + download route | feature/p3-zip-download | ✅ done |
 
 ---
 

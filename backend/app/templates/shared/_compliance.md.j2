@@ -1,0 +1,7 @@
+{% if compliance %}
+{% for c in compliance %}
+- **{{ c.name }}** — {{ c.description }}
+{% endfor %}
+{% else %}
+- *No explicit compliance drivers captured; revisit for regulated domains.*
+{% endif %}

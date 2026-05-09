@@ -1,14 +1,16 @@
 name: CI
 
+# Automatic CI disabled — restore push/pull_request below when re-enabling.
 on:
-  push:
-    branches:
-      - main
-      - development
-  pull_request:
-    branches:
-      - main
-      - development
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  #     - development
+  # pull_request:
+  #   branches:
+  #     - main
+  #     - development
 
 jobs:
   backend:

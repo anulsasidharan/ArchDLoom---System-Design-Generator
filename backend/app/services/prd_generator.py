@@ -6,7 +6,7 @@ from io import BytesIO
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
+from docx.shared import Inches, Pt
 
 from app.domain.components import ComponentSelectionResult
 from app.domain.requirements import ParsedRequirement, SuccessMetric
@@ -17,6 +17,7 @@ def generate_prd_docx(
     components: ComponentSelectionResult,
     *,
     project_title: str | None = None,
+    diagram_png: bytes | None = None,
 ) -> bytes:
     """Build a PRD .docx from parsed requirements and component decisions."""
     title = project_title or requirements.system_name
@@ -98,6 +99,9 @@ def generate_prd_docx(
             doc.add_paragraph(f"{k}: {v}", style="List Bullet")
 
     doc.add_heading("7. Proposed Architecture Snapshot (Phase 2)", 1)
+    if diagram_png:
+        doc.add_picture(BytesIO(diagram_png), width=Inches(6.2))
+        doc.add_paragraph()
     if components.total_monthly_cost_usd is not None:
         snap = (
             f"Pattern: {components.architecture_pattern.value}. "

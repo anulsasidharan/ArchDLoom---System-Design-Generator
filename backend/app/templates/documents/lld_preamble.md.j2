@@ -1,0 +1,7 @@
+Low-level design pack for {{ project_title }} ({{ domain }}). This artifact expands operational detail beneath the PRD and architecture narrative.
+
+Core feature themes: {% if core_features %}{{ core_features | join("; ") }}{% else %}Derived from functional requirement titles{% endif %}.
+
+Non-functional guardrails emphasize {% if nfr.latency_target %}latency {{ nfr.latency_target }}{% else %}latency targets to be finalized{% endif %} and {% if nfr.availability_target %}availability {{ nfr.availability_target }}{% else %}availability commitments from stakeholders{% endif %}.
+
+{% if needs_async %}Asynchronous processing is in scope — queue topology follows component selections below.{% else %}Processing is assumed primarily synchronous unless emerging bottlenecks dictate async offload.{% endif %}

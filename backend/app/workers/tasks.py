@@ -13,12 +13,16 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db.session import SessionLocal
 from app.domain.generation import GenerationOptions
-from app.domain.requirements import ParsedRequirement
 from app.exceptions import ClaudeConfigurationError, RequirementParseError
 from app.models.generation_job import GenerationJob
 from app.models.project import Project
+from app.services.architecture_markdown import generate_architecture_markdown
+from app.services.artifact_bundle import build_zip_bundle
 from app.services.claude_client import ClaudeClient
 from app.services.component_selector import ComponentSelector
+from app.services.diagram_bridge import render_mermaid_to_png
+from app.services.evolution_generator import generate_evolution_markdown
+from app.services.lld_generator import generate_lld_docx
 from app.services.mermaid_generator import generate_architecture_mermaid
 from app.services.prd_generator import generate_prd_docx
 from app.services.requirement_parser import RequirementParser
@@ -109,27 +113,99 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
 
     project.component_selections = selection.model_dump(mode="json")
 
-    job.progress = 60
-    job.current_step = "generate_prd"
-    db.commit()
-
-    try:
-        prd_bytes = generate_prd_docx(parsed, selection, project_title=parsed.system_name)
-    except Exception as e:
-        logger.exception("PRD generation failed")
-        _fail_job(db, job, f"PRD generation failed: {e}")
-        return
-
-    job.progress = 80
+    job.progress = 55
     job.current_step = "generate_diagram"
     db.commit()
 
     mermaid = generate_architecture_mermaid(selection, title=parsed.system_name)
 
+    job.progress = 62
+    job.current_step = "render_architecture_markdown"
+    db.commit()
+
+    try:
+        architecture_md = generate_architecture_markdown(
+            parsed,
+            selection,
+            mermaid_source=mermaid,
+            project_title=parsed.system_name,
+        )
+        evolution_md = generate_evolution_markdown(
+            parsed,
+            selection,
+            project_title=parsed.system_name,
+        )
+    except Exception as e:
+        logger.exception("Markdown artifact generation failed")
+        _fail_job(db, job, f"Markdown artifact generation failed: {e}")
+        return
+
+    job.progress = 68
+    job.current_step = "render_diagram_png"
+    db.commit()
+
+    try:
+        diagram_png = render_mermaid_to_png(mermaid, title=parsed.system_name)
+    except Exception as e:
+        logger.exception("Diagram PNG rendering failed")
+        _fail_job(db, job, f"Diagram rendering failed: {e}")
+        return
+
+    job.progress = 74
+    job.current_step = "generate_documents"
+    db.commit()
+
+    try:
+        prd_bytes = generate_prd_docx(
+            parsed,
+            selection,
+            project_title=parsed.system_name,
+            diagram_png=diagram_png,
+        )
+        lld_bytes = generate_lld_docx(
+            parsed,
+            selection,
+            project_title=parsed.system_name,
+            diagram_png=diagram_png,
+        )
+    except Exception as e:
+        logger.exception("Word artifact generation failed")
+        _fail_job(db, job, f"Word artifact generation failed: {e}")
+        return
+
+    job.progress = 88
+    job.current_step = "zip_bundle"
+    db.commit()
+
+    bundle_files = {
+        "prd.docx": prd_bytes,
+        "lld.docx": lld_bytes,
+        "architecture.md": architecture_md.encode("utf-8"),
+        "evolution.md": evolution_md.encode("utf-8"),
+        "architecture.mmd": mermaid.encode("utf-8"),
+        "architecture.png": diagram_png,
+    }
+
+    try:
+        bundle_zip = build_zip_bundle(bundle_files)
+    except Exception as e:
+        logger.exception("ZIP bundling failed")
+        _fail_job(db, job, f"ZIP bundling failed: {e}")
+        return
+
     prd_b64 = base64.standard_b64encode(prd_bytes).decode("ascii")
+    lld_b64 = base64.standard_b64encode(lld_bytes).decode("ascii")
+    png_b64 = base64.standard_b64encode(diagram_png).decode("ascii")
+    zip_b64 = base64.standard_b64encode(bundle_zip).decode("ascii")
+
     project.generated_files = {
         "prd.docx": {"encoding": "base64", "data": prd_b64},
+        "lld.docx": {"encoding": "base64", "data": lld_b64},
+        "architecture.md": {"encoding": "text", "data": architecture_md},
+        "evolution.md": {"encoding": "text", "data": evolution_md},
         "architecture.mmd": {"encoding": "text", "data": mermaid},
+        "architecture.png": {"encoding": "base64", "data": png_b64},
+        "bundle.zip": {"encoding": "base64", "data": zip_b64},
     }
     project.status = "completed"
 
