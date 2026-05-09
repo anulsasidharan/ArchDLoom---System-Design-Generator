@@ -56,8 +56,12 @@ def build_parse_prompt(user_input: str, options: GenerationOptions | None) -> st
   "constraints": string[],
   "needs_async_processing": boolean,
   "has_ai_features": boolean,
+  "aiml_architecture_hint": string | null,
   "clarification_questions": string[]
 }}
+
+When the system is clearly AI/ML-specific, set aiml_architecture_hint to one of:
+"rag", "fine_tuning", "realtime_inference", "agentic", or null if unclear or not AI-focused.
 
 Generation options (hints): focus_ai_ml={opts.focus_ai_ml}, compliance_emphasis=\
 {opts.compliance_emphasis}, include_cost_estimates={opts.include_cost_estimates}.

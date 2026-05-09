@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ScaleMetrics(BaseModel):
@@ -69,3 +69,18 @@ class ParsedRequirement(BaseModel):
         default_factory=list,
         description="Only when critical information is missing.",
     )
+    aiml_architecture_hint: str | None = Field(
+        default=None,
+        description="Optional: rag | fine_tuning | realtime_inference | agentic",
+    )
+
+    @field_validator("aiml_architecture_hint", mode="before")
+    @classmethod
+    def _normalize_aiml_hint(cls, v: object) -> str | None:
+        if v is None or v == "":
+            return None
+        key = str(v).strip().lower().replace(" ", "_").replace("-", "_")
+        if key in ("real_time_inference", "realtime"):
+            key = "realtime_inference"
+        allowed = frozenset({"rag", "fine_tuning", "realtime_inference", "agentic"})
+        return key if key in allowed else None

@@ -145,6 +145,7 @@ def _artifact_zip_bytes(files: dict[str, Any]) -> bytes:
         "architecture.md",
         "evolution.md",
         "architecture.mmd",
+        "architecture-flow.mmd",
         "architecture.svg",
         "architecture.png",
     )

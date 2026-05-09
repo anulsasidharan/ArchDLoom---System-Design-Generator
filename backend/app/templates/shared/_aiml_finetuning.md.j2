@@ -1,0 +1,6 @@
+This design follows a **supervised / preference fine-tuning pipeline** template for {{ project_title }}.
+
+- **Data**: version datasets and labels; enforce governance (PII redaction, license checks) before any training run.
+- **Training**: queue GPU jobs, pin base model revisions, track hyperparameters and checkpoints in the metadata store.
+- **Evaluation**: offline metrics (accuracy, safety, toxicity), held-out sets, and regression gates before promotion.
+- **Release**: model registry with staged rollout (canary endpoints, shadow traffic) and rollback via prior checkpoints.
