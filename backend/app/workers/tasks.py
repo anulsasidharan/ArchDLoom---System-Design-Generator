@@ -22,6 +22,14 @@ from app.services.claude_client import ClaudeClient
 from app.services.component_selector import ComponentSelector
 from app.services.diagram_bridge import render_mermaid_to_png, render_mermaid_to_svg
 from app.services.diagram_renderer import render_architecture_diagram_svg
+from app.services.enterprise import (
+    build_compliance_mapping,
+    build_hadr_strategy,
+    build_observability_plan,
+    build_security_plan,
+    estimate_costs,
+    generate_network_diagram,
+)
 from app.services.evolution_generator import generate_evolution_markdown
 from app.services.hld_generator import generate_hld_docx
 from app.services.lld_generator import generate_lld_docx
@@ -104,7 +112,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     project.requirements = merged_req
     project.name = (parsed.system_name or project.name)[:200]
 
-    job.progress = 30
+    job.progress = 25
     job.current_step = "select_components"
     db.commit()
 
@@ -118,12 +126,31 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
 
     project.component_selections = selection.model_dump(mode="json")
 
+    job.progress = 45
+    job.current_step = "enterprise_analysis"
+    db.commit()
+
+    try:
+        cost_estimate = estimate_costs(parsed, selection)
+        compliance_mapping = build_compliance_mapping(parsed)
+        security_plan = build_security_plan(parsed, selection, compliance_mapping)
+        hadr_strategy = build_hadr_strategy(parsed, selection)
+        observability_plan = build_observability_plan(parsed, selection)
+    except Exception as e:
+        logger.exception("Enterprise analysis failed")
+        _fail_job(db, job, f"Enterprise analysis failed: {e}")
+        return
+
     job.progress = 55
     job.current_step = "generate_diagram"
     db.commit()
 
     mermaid = generate_architecture_mermaid(selection, title=parsed.system_name)
     flow_mermaid = generate_aiml_supplementary_mermaid(
+        selection,
+        title=parsed.system_name or "Architecture",
+    )
+    network_mermaid = generate_network_diagram(
         selection,
         title=parsed.system_name or "Architecture",
     )
@@ -139,6 +166,12 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
             mermaid_source=mermaid,
             project_title=parsed.system_name,
             supplementary_mermaid=flow_mermaid or None,
+            network_mermaid=network_mermaid or None,
+            cost=cost_estimate,
+            compliance_mapping=compliance_mapping,
+            security=security_plan,
+            hadr=hadr_strategy,
+            observability=observability_plan,
         )
         evolution_md = generate_evolution_markdown(
             parsed,
@@ -160,6 +193,20 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         logger.exception("Diagram PNG rendering failed")
         _fail_job(db, job, f"Diagram rendering failed: {e}")
         return
+
+    network_png: bytes | None = None
+    network_svg: str | None = None
+    try:
+        network_png = render_mermaid_to_png(network_mermaid, title=parsed.system_name or "Network")
+    except Exception:
+        logger.warning("Network PNG rendering failed; storing Mermaid source only", exc_info=True)
+    try:
+        network_svg = render_mermaid_to_svg(
+            network_mermaid,
+            title=parsed.system_name or "Network",
+        )
+    except Exception:
+        logger.warning("Network SVG rendering failed; storing Mermaid source only", exc_info=True)
 
     try:
         enhanced_svg, svg_warnings = render_architecture_diagram_svg(
@@ -189,6 +236,12 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
             selection,
             project_title=parsed.system_name,
             diagram_png=diagram_png,
+            network_png=network_png,
+            cost=cost_estimate,
+            compliance_mapping=compliance_mapping,
+            security=security_plan,
+            hadr=hadr_strategy,
+            observability=observability_plan,
         )
         lld_bytes = generate_lld_docx(
             parsed,
@@ -214,9 +267,14 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         "architecture.mmd": mermaid.encode("utf-8"),
         "architecture.svg": enhanced_svg.encode("utf-8"),
         "architecture.png": diagram_png,
+        "network.mmd": network_mermaid.encode("utf-8"),
     }
     if flow_mermaid.strip():
         bundle_files["architecture-flow.mmd"] = flow_mermaid.encode("utf-8")
+    if network_svg:
+        bundle_files["network.svg"] = network_svg.encode("utf-8")
+    if network_png:
+        bundle_files["network.png"] = network_png
 
     try:
         bundle_zip = build_zip_bundle(bundle_files)
@@ -230,8 +288,8 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     lld_b64 = base64.standard_b64encode(lld_bytes).decode("ascii")
     png_b64 = base64.standard_b64encode(diagram_png).decode("ascii")
     zip_b64 = base64.standard_b64encode(bundle_zip).decode("ascii")
-
     svg_b64 = base64.standard_b64encode(enhanced_svg.encode("utf-8")).decode("ascii")
+
     gen_files: dict[str, dict[str, str]] = {
         "prd.docx": {"encoding": "base64", "data": prd_b64},
         "hld.docx": {"encoding": "base64", "data": hld_b64},
@@ -241,11 +299,30 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         "architecture.mmd": {"encoding": "text", "data": mermaid},
         "architecture.svg": {"encoding": "base64", "data": svg_b64},
         "architecture.png": {"encoding": "base64", "data": png_b64},
+        "network.mmd": {"encoding": "text", "data": network_mermaid},
         "bundle.zip": {"encoding": "base64", "data": zip_b64},
     }
     if flow_mermaid.strip():
         gen_files["architecture-flow.mmd"] = {"encoding": "text", "data": flow_mermaid}
-    project.generated_files = gen_files
+    if network_svg:
+        gen_files["network.svg"] = {
+            "encoding": "base64",
+            "data": base64.standard_b64encode(network_svg.encode("utf-8")).decode("ascii"),
+        }
+    if network_png:
+        gen_files["network.png"] = {
+            "encoding": "base64",
+            "data": base64.standard_b64encode(network_png).decode("ascii"),
+        }
+
+    enterprise_blob: dict[str, Any] = {
+        "cost": cost_estimate.model_dump(mode="json"),
+        "compliance": compliance_mapping.model_dump(mode="json"),
+        "security": security_plan.model_dump(mode="json"),
+        "hadr": hadr_strategy.model_dump(mode="json"),
+        "observability": observability_plan.model_dump(mode="json"),
+    }
+    project.generated_files = {**gen_files, "enterprise": enterprise_blob}
     project.status = "completed"
 
     job.status = "completed"

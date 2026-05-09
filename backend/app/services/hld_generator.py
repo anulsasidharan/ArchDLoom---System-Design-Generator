@@ -9,6 +9,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
 from app.domain.components import ComponentSelectionResult
+from app.domain.enterprise import (
+    ComplianceMapping,
+    CostEstimate,
+    HADRStrategy,
+    ObservabilityPlan,
+    SecurityPlan,
+)
 from app.domain.requirements import ParsedRequirement
 from app.services.jinja_env import render_template
 
@@ -19,6 +26,12 @@ def generate_hld_docx(
     *,
     project_title: str | None = None,
     diagram_png: bytes | None = None,
+    network_png: bytes | None = None,
+    cost: CostEstimate | None = None,
+    compliance_mapping: ComplianceMapping | None = None,
+    security: SecurityPlan | None = None,
+    hadr: HADRStrategy | None = None,
+    observability: ObservabilityPlan | None = None,
 ) -> bytes:
     title = project_title or requirements.system_name
     doc = Document()
@@ -68,7 +81,7 @@ def generate_hld_docx(
         doc.add_picture(BytesIO(diagram_png), width=Inches(6.2))
         doc.add_paragraph()
     doc.add_paragraph(
-        f"The selected pattern is **{components.architecture_pattern.value}**. "
+        f"The selected pattern is {components.architecture_pattern.value}. "
         "Components below map to deployable or managed services; boundaries align with "
         "failure isolation and team ownership where applicable."
     )
@@ -139,56 +152,234 @@ def generate_hld_docx(
             "Define resource models and error envelopes alongside the PRD functional themes."
         )
 
-    doc.add_heading("6. Security architecture", 1)
-    nfr = requirements.non_functional_requirements
+    doc.add_heading("6. Network architecture", 1)
+    if network_png:
+        doc.add_picture(BytesIO(network_png), width=Inches(6.2))
+        doc.add_paragraph()
     doc.add_paragraph(
-        "Encryption in transit: TLS for all external and east-west traffic where supported. "
-        "Encryption at rest: enable native KMS-backed encryption on managed databases "
-        "and object stores."
+        "Logical topology: public ingress (WAF + load balancer + NAT) → private app tier → "
+        "data tier with default-deny security groups. Egress to external services is allow-listed."
     )
-    if requirements.compliance_needs:
-        doc.add_paragraph("Compliance drivers:", style="Heading 3")
-        for c in requirements.compliance_needs:
-            doc.add_paragraph(f"{c.name}: {c.description}", style="List Bullet")
+
+    doc.add_heading("7. Security architecture", 1)
+    if security:
+        _render_security_section(doc, security)
     else:
         doc.add_paragraph(
-            "Map controls to organizational policy (IAM, secrets rotation, audit logging)."
+            "Encryption in transit: TLS for all external and east-west traffic where supported. "
+            "Encryption at rest: enable native KMS-backed encryption on managed databases "
+            "and object stores."
         )
 
-    doc.add_heading("7. Availability and disaster recovery", 1)
-    doc.add_paragraph(
-        f"Availability target: {nfr.availability_target or 'Align with stakeholder SLOs'}."
-    )
-    doc.add_paragraph(
-        f"RecoveryTime Objective (RTO): {nfr.rto or 'TBD'} · "
-        f"Recovery Point Objective (RPO): {nfr.rpo or 'TBD'}."
-    )
-    doc.add_paragraph(
-        "Prefer multi-AZ for stateful services where the vendor supports it; drill failover "
-        "and backup restores regularly."
-    )
+    if compliance_mapping and compliance_mapping.frameworks:
+        doc.add_heading("8. Compliance mapping", 1)
+        _render_compliance_section(doc, compliance_mapping)
+        next_index = 9
+    else:
+        next_index = 8
 
-    doc.add_heading("8. Observability", 1)
-    doc.add_paragraph(
-        "Golden signals: latency, traffic, errors, saturation. Centralize structured logs "
-        "with trace correlation; alert on SLO burn rates and dependency health."
-    )
+    doc.add_heading(f"{next_index}. High availability & disaster recovery", 1)
+    if hadr:
+        _render_hadr_section(doc, hadr)
+    else:
+        nfr = requirements.non_functional_requirements
+        doc.add_paragraph(
+            f"Availability target: {nfr.availability_target or 'Align with stakeholder SLOs'}."
+        )
+        doc.add_paragraph(
+            f"Recovery Time Objective (RTO): {nfr.rto or 'TBD'} · "
+            f"Recovery Point Objective (RPO): {nfr.rpo or 'TBD'}."
+        )
+    next_index += 1
 
-    doc.add_heading("9. Capacity and scaling", 1)
+    doc.add_heading(f"{next_index}. Monitoring & observability", 1)
+    if observability:
+        _render_observability_section(doc, observability)
+    else:
+        doc.add_paragraph(
+            "Golden signals: latency, traffic, errors, saturation. Centralize structured logs "
+            "with trace correlation; alert on SLO burn rates and dependency health."
+        )
+    next_index += 1
+
+    doc.add_heading(f"{next_index}. Cost posture", 1)
+    if cost:
+        _render_cost_section(doc, cost)
+    else:
+        if total is not None:
+            doc.add_paragraph(
+                f"Aggregate baseline cost estimate (library): ${total:,.0f}/month — "
+                "revisit after load tests."
+            )
+        else:
+            doc.add_paragraph("Cost baseline not computed — refine after sizing exercises.")
+    next_index += 1
+
+    doc.add_heading(f"{next_index}. Capacity & scaling", 1)
+    nfr = requirements.non_functional_requirements
     doc.add_paragraph(
         f"Throughput posture: {nfr.throughput_target or 'Define peak and sustained QPS'}. "
         f"Concurrency: {nfr.concurrent_users or 'Model concurrent sessions vs. connection pools'}."
     )
-    if total is not None:
-        doc.add_paragraph(
-            f"Aggregate baseline cost estimate (library): ${total:,.0f}/month — "
-            "revisit after load tests."
-        )
 
     _style_normal(doc)
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+def _render_security_section(doc: Document, security: SecurityPlan) -> None:
+    families: list[tuple[str, list[str]]] = [
+        ("Authentication", security.authentication),
+        ("Authorization", security.authorization),
+        ("IAM principles", security.iam_principles),
+        ("Encryption — at rest", security.encryption_at_rest),
+        ("Encryption — in transit", security.encryption_in_transit),
+        ("Network security", security.network_security),
+        ("Secrets management", security.secrets_management),
+        ("Audit logging", security.audit_logging),
+        ("Application security", security.application_security),
+        ("Data protection", security.data_protection),
+        ("Threat-model notes", security.threat_model_notes),
+    ]
+    for label, items in families:
+        if not items:
+            continue
+        doc.add_heading(label, 2)
+        for item in items:
+            doc.add_paragraph(item, style="List Bullet")
+
+
+def _render_compliance_section(doc: Document, mapping: ComplianceMapping) -> None:
+    if mapping.explicit_codes:
+        doc.add_paragraph(
+            f"Explicitly required: {', '.join(mapping.explicit_codes)}."
+        )
+    if mapping.inferred_codes:
+        doc.add_paragraph(
+            f"Inferred from domain or signals: {', '.join(mapping.inferred_codes)}."
+        )
+    for fw in mapping.frameworks:
+        doc.add_heading(fw.name, 2)
+        if fw.drivers:
+            doc.add_paragraph("Drivers:", style="Heading 3")
+            for d in fw.drivers:
+                doc.add_paragraph(d, style="List Bullet")
+        if fw.controls:
+            doc.add_paragraph("Recommended controls:", style="Heading 3")
+            tbl = doc.add_table(rows=1, cols=2)
+            hdr = tbl.rows[0].cells
+            hdr[0].text = "Control"
+            hdr[1].text = "Description"
+            for ctrl in fw.controls:
+                row = tbl.add_row().cells
+                row[0].text = ctrl.name
+                row[1].text = ctrl.description
+    if mapping.notes:
+        doc.add_heading("Posture notes", 2)
+        for n in mapping.notes:
+            doc.add_paragraph(n, style="List Bullet")
+
+
+def _render_hadr_section(doc: Document, hadr: HADRStrategy) -> None:
+    p = doc.add_paragraph()
+    p.add_run("Availability target: ").bold = True
+    p.add_run(hadr.availability_target)
+    p = doc.add_paragraph()
+    p.add_run("RTO: ").bold = True
+    p.add_run(hadr.rto)
+    p.add_run("    ")
+    p.add_run("RPO: ").bold = True
+    p.add_run(hadr.rpo)
+    p = doc.add_paragraph()
+    p.add_run("Recommended posture: ").bold = True
+    p.add_run(hadr.posture)
+    if hadr.posture_rationale:
+        doc.add_paragraph(f"Rationale: {hadr.posture_rationale}")
+    sections: list[tuple[str, list[str]]] = [
+        ("Recommendations", hadr.recommendations),
+        ("Backup strategy", hadr.backup_strategy),
+        ("Drill cadence", hadr.drills),
+    ]
+    for label, items in sections:
+        if not items:
+            continue
+        doc.add_heading(label, 2)
+        for item in items:
+            doc.add_paragraph(item, style="List Bullet")
+    if hadr.failover_runbook:
+        doc.add_heading("Failover runbook (outline)", 2)
+        for i, step in enumerate(hadr.failover_runbook, 1):
+            doc.add_paragraph(f"{i}. {step}")
+
+
+def _render_observability_section(doc: Document, plan: ObservabilityPlan) -> None:
+    if plan.pillars:
+        doc.add_heading("Pillars", 2)
+        for pillar in plan.pillars:
+            doc.add_heading(pillar.name, 3)
+            doc.add_paragraph(pillar.purpose)
+            if pillar.instruments:
+                doc.add_paragraph("Instrumentation:", style="Heading 4")
+                for instr in pillar.instruments:
+                    doc.add_paragraph(instr, style="List Bullet")
+            if pillar.alerts:
+                doc.add_paragraph("Alerts:", style="Heading 4")
+                for alert in pillar.alerts:
+                    doc.add_paragraph(alert, style="List Bullet")
+    sections: list[tuple[str, list[str]]] = [
+        ("SLO targets", plan.slo_targets),
+        ("Paging", plan.paging),
+        ("Dashboards", plan.dashboards),
+    ]
+    for label, items in sections:
+        if not items:
+            continue
+        doc.add_heading(label, 2)
+        for item in items:
+            doc.add_paragraph(item, style="List Bullet")
+    if plan.log_retention or plan.trace_sampling:
+        doc.add_paragraph(
+            f"Log retention: {plan.log_retention or 'TBD'}. "
+            f"Trace sampling: {plan.trace_sampling or 'TBD'}."
+        )
+
+
+def _render_cost_section(doc: Document, cost: CostEstimate) -> None:
+    doc.add_paragraph(
+        f"Aggregate scale-adjusted estimate: ${cost.aggregate_monthly_usd:,.0f} per month "
+        f"(pattern: {cost.pattern})."
+    )
+    if cost.line_items:
+        doc.add_heading("Component cost lines", 2)
+        tbl = doc.add_table(rows=1, cols=6)
+        hdr = tbl.rows[0].cells
+        for i, label in enumerate(["Category", "Component", "Baseline", "Scale", "Estimated", "Notes"]):
+            hdr[i].text = label
+        for li in cost.line_items:
+            row = tbl.add_row().cells
+            row[0].text = li.category
+            row[1].text = li.component
+            row[2].text = f"${li.base_cost_usd:,.0f}"
+            row[3].text = f"{li.scale_multiplier:.2f}"
+            row[4].text = f"${li.estimated_monthly_cost_usd:,.0f}"
+            row[5].text = li.notes
+    if cost.phases:
+        doc.add_heading("Phase projections", 2)
+        ptbl = doc.add_table(rows=1, cols=3)
+        hdr = ptbl.rows[0].cells
+        hdr[0].text = "Phase"
+        hdr[1].text = "Monthly cost"
+        hdr[2].text = "Notes"
+        for phase in cost.phases:
+            row = ptbl.add_row().cells
+            row[0].text = phase.name
+            row[1].text = f"${phase.monthly_cost_usd:,.0f}"
+            row[2].text = phase.notes
+    if cost.assumptions:
+        doc.add_heading("Assumptions", 2)
+        for a in cost.assumptions:
+            doc.add_paragraph(a, style="List Bullet")
 
 
 def _style_normal(doc: Document) -> None:

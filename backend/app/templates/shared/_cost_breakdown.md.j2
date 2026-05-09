@@ -1,0 +1,23 @@
+### Component cost lines
+
+| Category | Component | Baseline | Scale × | Estimated /mo | Notes |
+| --- | --- | ---: | ---: | ---: | --- |
+{% for li in cost.line_items %}
+| `{{ li.category }}` | {{ li.component }} | ${{ "{:,.0f}".format(li.base_cost_usd) }} | {{ "{:.2f}".format(li.scale_multiplier) }} | **${{ "{:,.0f}".format(li.estimated_monthly_cost_usd) }}** | {{ li.notes }} |
+{% endfor %}
+
+**Aggregate scale-adjusted estimate:** **${{ "{:,.0f}".format(cost.aggregate_monthly_usd) }} / month**.
+
+### Phase projections
+
+| Phase | Indicative cost | Notes |
+| --- | ---: | --- |
+{% for p in cost.phases %}
+| {{ p.name }} | ${{ "{:,.0f}".format(p.monthly_cost_usd) }} | {{ p.notes }} |
+{% endfor %}
+
+### Assumptions
+
+{% for a in cost.assumptions %}
+- {{ a }}
+{% endfor %}

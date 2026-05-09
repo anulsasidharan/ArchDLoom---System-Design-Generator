@@ -1,0 +1,43 @@
+### Pillars
+
+{% for pillar in observability.pillars %}
+#### {{ pillar.name }}
+
+{{ pillar.purpose }}
+
+**Instrumentation**
+
+{% for instr in pillar.instruments %}
+- {{ instr }}
+{% endfor %}
+
+{% if pillar.alerts %}
+**Alerts**
+
+{% for alert in pillar.alerts %}
+- {{ alert }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+
+### SLO targets
+
+{% for slo in observability.slo_targets %}
+- {{ slo }}
+{% endfor %}
+
+### Paging policy
+
+{% for p in observability.paging %}
+- {{ p }}
+{% endfor %}
+
+### Dashboards
+
+{% for d in observability.dashboards %}
+- {{ d }}
+{% endfor %}
+
+**Log retention:** {{ observability.log_retention }}  
+**Trace sampling:** {{ observability.trace_sampling }}

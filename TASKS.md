@@ -79,12 +79,12 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 
 | Task | Branch | Status |
 | --- | --- | --- |
-| P6-1 · Cost estimation engine | feature/p6-cost-estimation | ⬜ todo |
-| P6-2 · Compliance mapping (GDPR, HIPAA, SOC 2) | feature/p6-compliance-mapping | ⬜ todo |
-| P6-3 · Network architecture diagrams | feature/p6-network-diagrams | ⬜ todo |
-| P6-4 · Security architecture document sections | feature/p6-security-sections | ⬜ todo |
-| P6-5 · HA/DR strategy generation | feature/p6-ha-dr-generation | ⬜ todo |
-| P6-6 · Monitoring / observability sections | feature/p6-observability-sections | ⬜ todo |
+| P6-1 · Cost estimation engine | feature/p6-cost-estimation | ✅ done |
+| P6-2 · Compliance mapping (GDPR, HIPAA, SOC 2) | feature/p6-compliance-mapping | ✅ done |
+| P6-3 · Network architecture diagrams | feature/p6-network-diagrams | ✅ done |
+| P6-4 · Security architecture document sections | feature/p6-security-sections | ✅ done |
+| P6-5 · HA/DR strategy generation | feature/p6-ha-dr-generation | ✅ done |
+| P6-6 · Monitoring / observability sections | feature/p6-observability-sections | ✅ done |
 
 ---
 

@@ -1,0 +1,35 @@
+{% if compliance_mapping.explicit_codes %}
+**Explicitly required:** {{ compliance_mapping.explicit_codes | join(", ") }}.
+{% endif %}
+{% if compliance_mapping.inferred_codes %}
+**Inferred from domain / signals:** {{ compliance_mapping.inferred_codes | join(", ") }}.
+{% endif %}
+
+{% for fw in compliance_mapping.frameworks %}
+#### {{ fw.name }}
+
+{% if fw.drivers %}
+**Drivers**
+
+{% for d in fw.drivers %}
+- {{ d }}
+{% endfor %}
+{% endif %}
+
+**Recommended controls**
+
+| Control | Description |
+| --- | --- |
+{% for ctrl in fw.controls %}
+| **{{ ctrl.name }}** | {{ ctrl.description }} |
+{% endfor %}
+
+{% endfor %}
+
+{% if compliance_mapping.notes %}
+**Posture notes**
+
+{% for n in compliance_mapping.notes %}
+- {{ n }}
+{% endfor %}
+{% endif %}
