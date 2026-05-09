@@ -1,0 +1,56 @@
+# {{ project_title }} — Architecture
+
+{{ summary_block }}
+
+## Context
+
+- **Domain:** {{ domain }}
+- **Architecture pattern:** `{{ pattern }}`
+
+## Scale signals
+
+{% include "shared/_scale_metrics.md.j2" %}
+
+## Non-functional targets
+
+{% include "shared/_nfr.md.j2" %}
+
+## Compliance & policy
+
+{% include "shared/_compliance.md.j2" %}
+
+## Component decisions
+
+{% for key, row in component_rows %}
+### {{ row.selected.name }} (`{{ key }}`)
+
+**Vendor:** {{ row.selected.vendor or "—" }}  
+**Rationale:** {{ row.rationale }}
+
+{% if row.trade_offs.pros %}
+**Pros:**
+{% for p in row.trade_offs.pros %}
+- {{ p }}
+{% endfor %}
+{% endif %}
+{% if row.trade_offs.cons %}
+**Cons:**
+{% for c in row.trade_offs.cons %}
+- {{ c }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+
+## Primary architecture diagram (Mermaid)
+
+The same source ships as `architecture.mmd` for tooling and reviews.
+
+```mermaid
+{{ mermaid_source }}
+```
+
+## Operational notes
+
+- Estimated aggregate component cost (library baseline): {% if total_cost is not none %}**${{ "{:,.0f}".format(total_cost) }}**/month{% else %}*not computed*{% endif %}.
+- Async processing: **{{ "yes" if needs_async else "no" }}** · AI/ML features: **{{ "yes" if has_ai else "no" }}**.

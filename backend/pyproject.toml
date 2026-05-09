@@ -13,6 +13,8 @@ dependencies = [
     "anthropic>=0.40.0",
     "celery>=5.3.0",
     "fastapi>=0.109.0",
+    "jinja2>=3.1.0",
+    "pillow>=10.0.0",
     "psycopg[binary]>=3.1.0",
     "pydantic-settings>=2.0.0",
     "python-docx>=1.1.0",
@@ -31,6 +33,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[tool.setuptools.package-data]
+"app" = ["templates/**/*.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

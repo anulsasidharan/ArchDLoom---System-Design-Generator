@@ -1,0 +1,21 @@
+{% if nfr.latency_target %}
+- **Latency:** {{ nfr.latency_target }}
+{% endif %}
+{% if nfr.availability_target %}
+- **Availability:** {{ nfr.availability_target }}
+{% endif %}
+{% if nfr.throughput_target %}
+- **Throughput:** {{ nfr.throughput_target }}
+{% endif %}
+{% if nfr.concurrent_users %}
+- **Concurrent users:** {{ nfr.concurrent_users }}
+{% endif %}
+{% if nfr.rto %}
+- **RTO:** {{ nfr.rto }}
+{% endif %}
+{% if nfr.rpo %}
+- **RPO:** {{ nfr.rpo }}
+{% endif %}
+{% if not (nfr.latency_target or nfr.availability_target or nfr.throughput_target or nfr.concurrent_users or nfr.rto or nfr.rpo) %}
+- *Targets not specified — align with product SLO workshops.*
+{% endif %}

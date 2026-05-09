@@ -1,0 +1,74 @@
+# {{ project_title }} — System Design Evolution
+
+This document sketches **{{ phases | length }}** evolution stages from MVP constraints toward the target architecture.
+
+## Overview
+
+{{ evolution_intro }}
+
+### Scale assumptions
+
+{% include "shared/_scale_metrics.md.j2" %}
+
+---
+
+{% for phase in phases %}
+## Phase {{ loop.index }}: {{ phase.name }}
+
+**Focus:** {{ phase.focus }}
+
+### Snapshot
+
+```mermaid
+{{ phase.mermaid }}
+```
+
+### Characteristics
+
+**Strengths**
+
+{% for s in phase.strengths %}
+- {{ s }}
+{% endfor %}
+
+**Limitations**
+
+{% for l in phase.limitations %}
+- {{ l }}
+{% endfor %}
+
+{% if phase.triggers %}
+### When to evolve
+
+{% for t in phase.triggers %}
+- {{ t }}
+{% endfor %}
+{% endif %}
+
+{% if phase.migrations %}
+### Migration outline
+
+{% for step in phase.migrations %}
+{{ loop.index }}. {{ step }}
+{% endfor %}
+{% endif %}
+
+{% if not loop.last %}
+---
+
+{% endif %}
+{% endfor %}
+
+## Cost posture (illustrative)
+
+| Phase | Monthly cost | Notes |
+| --- | --- | --- |
+{% for row in cost_rows %}
+| {{ row.name }} | {{ row.cost }} | {{ row.notes }} |
+{% endfor %}
+
+## Lessons learned (draft)
+
+- Start with the smallest managed stack that meets **latency** and **availability** promises.
+- Introduce queues and stream processing when **async** volume crosses team operational limits.
+- Revisit **data residency** and **compliance** before scaling past growth thresholds.
