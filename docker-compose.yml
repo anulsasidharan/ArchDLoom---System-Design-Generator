@@ -45,6 +45,46 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_ENVIRONMENT: ${NEXT_PUBLIC_ENVIRONMENT:-production}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.celery_app:celery_app",
+        "worker",
+        "--loglevel=info",
+      ]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://archdloom:archdloom@db:5432/archdloom}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
     depends_on:
       db:
         condition: service_healthy
