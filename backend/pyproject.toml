@@ -7,7 +7,14 @@ name = "archdloom-backend"
 version = "0.1.0"
 description = "Backend services for ArchDLoom"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
