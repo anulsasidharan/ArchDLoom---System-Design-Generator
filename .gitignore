@@ -1,0 +1,80 @@
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# =========================
+# Python (Backend)
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# =========================
+# Node / Next.js (Frontend)
+# =========================
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# =========================
+# Logs / Runtime
+# =========================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Docker / Local services
+# =========================
+.docker/
+docker-data/
+
+# =========================
+# Project artifacts
+# =========================
+tmp/
+temp/
+*.sqlite3
+*.db
+backend/.mypy_cache/
+backend/.pytest_cache/
+frontend/.next/
