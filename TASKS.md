@@ -92,12 +92,12 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 
 | Task | Branch | Status |
 | --- | --- | --- |
-| P7-1 · Landing page | feature/p7-landing-page | ⬜ todo |
-| P7-2 · Generation progress & job UX | feature/p7-generation-progress | ⬜ todo |
-| P7-3 · Document preview components | feature/p7-document-preview | ⬜ todo |
-| P7-4 · Download & ZIP UX | feature/p7-download-ux | ⬜ todo |
-| P7-5 · Project management (save/load) | feature/p7-projects-crud-ui | ⬜ todo |
-| P7-6 · Component library browser | feature/p7-component-browser | ⬜ todo |
+| P7-1 · Landing page | feature/phase7-frontend_polish_and_UX | ✅ done |
+| P7-2 · Generation progress & job UX | feature/phase7-frontend_polish_and_UX | ✅ done |
+| P7-3 · Document preview components | feature/phase7-frontend_polish_and_UX | ✅ done |
+| P7-4 · Download & ZIP UX | feature/phase7-frontend_polish_and_UX | ✅ done |
+| P7-5 · Project management (save/load) | feature/phase7-frontend_polish_and_UX | ✅ done |
+| P7-6 · Component library browser | feature/phase7-frontend_polish_and_UX | ✅ done |
 
 ---
 
