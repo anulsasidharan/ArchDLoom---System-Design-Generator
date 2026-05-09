@@ -43,6 +43,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://archdloom:archdloom@db:5432/archdloom}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

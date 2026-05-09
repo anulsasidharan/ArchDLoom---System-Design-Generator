@@ -12,11 +12,11 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 | --- | --- | --- |
 | P1-1 · Monorepo layout, tooling, README | feature/p1-monorepo-scaffold | ✅ done |
 | P1-2 · Docker Compose (API, Postgres, Redis) | feature/p1-docker-compose | ✅ done |
-| P1-3 · Database schema migrations (Alembic) | feature/p1-db-migrations | ⬜ todo |
-| P1-4 · FastAPI shell, settings, `/health`, OpenAPI | feature/p1-fastapi-bootstrap | ⬜ todo |
-| P1-5 · Next.js 14 app shell, Tailwind, shadcn base | feature/p1-nextjs-bootstrap | ⬜ todo |
-| P1-6 · Secrets/config pattern + Claude env documentation | feature/p1-config-claude-env | ⬜ todo |
-| P1-7 · GitHub Actions CI (backend + frontend) | feature/p1-github-actions-ci | ⬜ todo |
+| P1-3 · Database schema migrations (Alembic) | feature/p1-db-migrations | ✅ done |
+| P1-4 · FastAPI shell, settings, `/health`, OpenAPI | feature/p1-fastapi-bootstrap | ✅ done |
+| P1-5 · Next.js 14 app shell, Tailwind, shadcn base | feature/p1-nextjs-bootstrap | ✅ done |
+| P1-6 · Secrets/config pattern + Claude env documentation | feature/p1-config-claude-env | ✅ done |
+| P1-7 · GitHub Actions CI (backend + frontend) | feature/p1-github-actions-ci | ✅ done |
 
 ---
 
