@@ -1,10 +1,35 @@
-"""Minimal ASGI entrypoint for local and Docker runs (expanded in P1-4)."""
+"""FastAPI application entry."""
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-app = FastAPI(title="ArchDLoom API", version="0.1.0")
+from app.api.routes import health as health_routes
+from app.config import get_settings
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    yield
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(
+        title=settings.app_name,
+        version=settings.app_version,
+        description=(
+            "ArchDLoom system design generator API: requirements ingestion, generation jobs, "
+            "and downloadable architecture artifacts."
+        ),
+        openapi_url="/openapi.json",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        lifespan=lifespan,
+    )
+    app.include_router(health_routes.router)
+    return app
+
+
+app = create_app()
