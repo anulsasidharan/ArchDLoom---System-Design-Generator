@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     s3_bucket_name: str | None = None
     s3_region: str | None = None
 
+    #: Optional directory for resolving relative `icon_url` paths (defaults to `backend/static/icons`).
+    icon_assets_root: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -20,7 +20,8 @@ from app.services.architecture_markdown import generate_architecture_markdown
 from app.services.artifact_bundle import build_zip_bundle
 from app.services.claude_client import ClaudeClient
 from app.services.component_selector import ComponentSelector
-from app.services.diagram_bridge import render_mermaid_to_png
+from app.services.diagram_bridge import render_mermaid_to_png, render_mermaid_to_svg
+from app.services.diagram_renderer import render_architecture_diagram_svg
 from app.services.evolution_generator import generate_evolution_markdown
 from app.services.hld_generator import generate_hld_docx
 from app.services.lld_generator import generate_lld_docx
@@ -152,6 +153,18 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         _fail_job(db, job, f"Diagram rendering failed: {e}")
         return
 
+    try:
+        enhanced_svg, svg_warnings = render_architecture_diagram_svg(
+            mermaid,
+            selection,
+            diagram_title=parsed.system_name or "Architecture",
+        )
+        if svg_warnings:
+            logger.info("Diagram SVG overlay notes: %s", "; ".join(svg_warnings[:12]))
+    except Exception:
+        logger.warning("Enhanced SVG overlay failed; storing base Mermaid SVG", exc_info=True)
+        enhanced_svg = render_mermaid_to_svg(mermaid, title=parsed.system_name or "Architecture")
+
     job.progress = 74
     job.current_step = "generate_documents"
     db.commit()
@@ -191,6 +204,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         "architecture.md": architecture_md.encode("utf-8"),
         "evolution.md": evolution_md.encode("utf-8"),
         "architecture.mmd": mermaid.encode("utf-8"),
+        "architecture.svg": enhanced_svg.encode("utf-8"),
         "architecture.png": diagram_png,
     }
 
@@ -207,6 +221,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     png_b64 = base64.standard_b64encode(diagram_png).decode("ascii")
     zip_b64 = base64.standard_b64encode(bundle_zip).decode("ascii")
 
+    svg_b64 = base64.standard_b64encode(enhanced_svg.encode("utf-8")).decode("ascii")
     project.generated_files = {
         "prd.docx": {"encoding": "base64", "data": prd_b64},
         "hld.docx": {"encoding": "base64", "data": hld_b64},
@@ -214,6 +229,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         "architecture.md": {"encoding": "text", "data": architecture_md},
         "evolution.md": {"encoding": "text", "data": evolution_md},
         "architecture.mmd": {"encoding": "text", "data": mermaid},
+        "architecture.svg": {"encoding": "base64", "data": svg_b64},
         "architecture.png": {"encoding": "base64", "data": png_b64},
         "bundle.zip": {"encoding": "base64", "data": zip_b64},
     }

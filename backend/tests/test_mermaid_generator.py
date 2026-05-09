@@ -8,7 +8,7 @@ from app.domain.components import (
     ComponentSummary,
     TradeOffSet,
 )
-from app.services.mermaid_generator import generate_architecture_mermaid
+from app.services.mermaid_generator import generate_architecture_mermaid, mermaid_category_to_node_ids
 
 
 def _minimal_selection(pattern: ArchitecturePattern) -> ComponentSelectionResult:
@@ -38,3 +38,14 @@ def test_three_tier_contains_graph() -> None:
 def test_rag_contains_subgraph() -> None:
     src = generate_architecture_mermaid(_minimal_selection(ArchitecturePattern.RAG_SYSTEM))
     assert "RAG" in src
+
+
+def test_node_id_map_three_tier() -> None:
+    m = mermaid_category_to_node_ids(ArchitecturePattern.THREE_TIER)
+    assert m["database"] == "DB"
+    assert m["api_gateway"] == "GW"
+
+
+def test_node_id_map_microservices() -> None:
+    m = mermaid_category_to_node_ids(ArchitecturePattern.MICROSERVICES)
+    assert m["compute"] == "SVC"

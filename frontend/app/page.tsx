@@ -21,7 +21,9 @@ export default function HomePage() {
             Open API docs
           </a>
         </Button>
-        <Button variant="outline">Generation UI arrives in Phase 7</Button>
+        <Button variant="outline" asChild>
+          <a href="/generate">Open generation & diagram preview</a>
+        </Button>
       </div>
     </main>
   );

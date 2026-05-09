@@ -1,7 +1,8 @@
-"""PNG bridge for architecture diagrams (Mermaid CLI when available, Pillow fallback)."""
+"""PNG/SVG bridge for architecture diagrams (Mermaid CLI when available, Pillow fallback)."""
 
 from __future__ import annotations
 
+import html
 import logging
 import os
 import shutil
@@ -13,6 +14,58 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
+
+
+def render_mermaid_to_svg(mermaid_source: str, *, title: str = "Architecture") -> str:
+    """Render Mermaid text to SVG markup using ``mmdc`` when available."""
+    mmdc = shutil.which("mmdc")
+    if mmdc:
+        try:
+            return _mermaid_cli_svg(mmdc, mermaid_source)
+        except Exception:
+            logger.warning("mmdc SVG render failed; using placeholder SVG", exc_info=True)
+    return _fallback_svg(mermaid_source, title=title)
+
+
+def _mermaid_cli_svg(mmdc: str, mermaid_source: str) -> str:
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "diagram.mmd"
+        out = Path(tmp) / "diagram.svg"
+        src.write_text(mermaid_source, encoding="utf-8")
+        pup = os.environ.get("PUPPETEER_EXECUTABLE_PATH", "")
+        env = {**os.environ, "PUPPETEER_EXECUTABLE_PATH": pup}
+        proc = subprocess.run(
+            [mmdc, "-i", str(src), "-o", str(out), "-b", "transparent"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env=env,
+        )
+        if proc.returncode != 0 or not out.is_file():
+            raise RuntimeError(proc.stderr or proc.stdout or "mmdc failed")
+        return out.read_text(encoding="utf-8")
+
+
+def _fallback_svg(mermaid_source: str, *, title: str) -> str:
+    snippet = mermaid_source.strip().replace("\r\n", "\n")
+    if len(snippet) > 2400:
+        snippet = snippet[:2397] + "..."
+    esc = html.escape(snippet)
+    title_esc = html.escape(title[:80])
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540">'
+        '<rect width="100%" height="100%" fill="#ffffff"/>'
+        f'<text x="28" y="40" font-size="18" fill="#111827">{title_esc}</text>'
+        '<text x="28" y="68" font-size="12" fill="#6b7280">'
+        "Install @mermaid-js/mermaid-cli and ensure `mmdc` is on PATH for full diagrams."
+        "</text>"
+        '<foreignObject x="24" y="88" width="912" height="420">'
+        '<div xmlns="http://www.w3.org/1999/xhtml" '
+        'style="font:12px monospace;white-space:pre-wrap;color:#374151;">'
+        f"{esc}</div>"
+        "</foreignObject>"
+        "</svg>"
+    )
 
 
 def render_mermaid_to_png(mermaid_source: str, *, title: str = "Architecture") -> bytes:

@@ -5,6 +5,52 @@ from __future__ import annotations
 from app.domain.components import ArchitecturePattern, ComponentSelectionResult
 
 
+def mermaid_category_to_node_ids(pattern: ArchitecturePattern) -> dict[str, str]:
+    """Map ``category`` keys from ``ComponentSelectionResult.selections`` to Mermaid node ids."""
+    if pattern == ArchitecturePattern.RAG_SYSTEM:
+        return {
+            "api_gateway": "GW",
+            "compute": "APP",
+            "vector_database": "V",
+            "llm_provider": "L",
+            "embedding_model": "E",
+            "database": "DB",
+            "cache": "C",
+            "monitoring": "M",
+            "message_queue": "Q",
+        }
+    if pattern == ArchitecturePattern.EVENT_DRIVEN:
+        return {
+            "api_gateway": "GW",
+            "compute": "APP",
+            "message_queue": "Q",
+            "database": "DB",
+            "cache": "C",
+            "monitoring": "M",
+        }
+    if pattern == ArchitecturePattern.MICROSERVICES:
+        return {
+            "api_gateway": "GW",
+            "compute": "SVC",
+            "database": "DB",
+            "cache": "C",
+            "monitoring": "M",
+            "message_queue": "Q",
+        }
+    # THREE_TIER + GENERIC
+    return {
+        "api_gateway": "GW",
+        "compute": "APP",
+        "database": "DB",
+        "cache": "C",
+        "monitoring": "M",
+        "message_queue": "Q",
+        "vector_database": "V",
+        "llm_provider": "L",
+        "embedding_model": "E",
+    }
+
+
 def generate_architecture_mermaid(
     components: ComponentSelectionResult,
     *,

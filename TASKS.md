@@ -53,12 +53,12 @@ Derived from `CLAUDE.md` (Development Workflow). Subtasks are ordered so each br
 
 | Task | Branch | Status |
 | --- | --- | --- |
-| P4-1 · Icon asset pipeline & storage (local/S3 stubs) | feature/p4-icon-assets-storage | ⬜ todo |
-| P4-2 · SVG overlay engine (parse Mermaid SVG, inject groups) | feature/p4-svg-overlay-engine | ⬜ todo |
-| P4-3 · Icon positioning & scaling algorithm | feature/p4-icon-layout | ⬜ todo |
-| P4-4 · Diagram annotations (cost, SLA hooks) | feature/p4-diagram-annotations | ⬜ todo |
-| P4-5 · Frontend diagram viewer (Mermaid / SVG preview) | feature/p4-diagram-viewer | ⬜ todo |
-| P4-6 · Component detail panel (trade-offs, alternatives) | feature/p4-component-detail-panel | ⬜ todo |
+| P4-1 · Icon asset pipeline & storage (local/S3 stubs) | feature/p4-icon-assets-storage | ✅ done |
+| P4-2 · SVG overlay engine (parse Mermaid SVG, inject groups) | feature/p4-svg-overlay-engine | ✅ done |
+| P4-3 · Icon positioning & scaling algorithm | feature/p4-icon-layout | ✅ done |
+| P4-4 · Diagram annotations (cost, SLA hooks) | feature/p4-diagram-annotations | ✅ done |
+| P4-5 · Frontend diagram viewer (Mermaid / SVG preview) | feature/p4-diagram-viewer | ✅ done |
+| P4-6 · Component detail panel (trade-offs, alternatives) | feature/p4-component-detail-panel | ✅ done |
 
 ---
 
