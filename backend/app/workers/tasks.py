@@ -22,6 +22,7 @@ from app.services.claude_client import ClaudeClient
 from app.services.component_selector import ComponentSelector
 from app.services.diagram_bridge import render_mermaid_to_png
 from app.services.evolution_generator import generate_evolution_markdown
+from app.services.hld_generator import generate_hld_docx
 from app.services.lld_generator import generate_lld_docx
 from app.services.mermaid_generator import generate_architecture_mermaid
 from app.services.prd_generator import generate_prd_docx
@@ -162,6 +163,12 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
             project_title=parsed.system_name,
             diagram_png=diagram_png,
         )
+        hld_bytes = generate_hld_docx(
+            parsed,
+            selection,
+            project_title=parsed.system_name,
+            diagram_png=diagram_png,
+        )
         lld_bytes = generate_lld_docx(
             parsed,
             selection,
@@ -179,6 +186,7 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
 
     bundle_files = {
         "prd.docx": prd_bytes,
+        "hld.docx": hld_bytes,
         "lld.docx": lld_bytes,
         "architecture.md": architecture_md.encode("utf-8"),
         "evolution.md": evolution_md.encode("utf-8"),
@@ -194,12 +202,14 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         return
 
     prd_b64 = base64.standard_b64encode(prd_bytes).decode("ascii")
+    hld_b64 = base64.standard_b64encode(hld_bytes).decode("ascii")
     lld_b64 = base64.standard_b64encode(lld_bytes).decode("ascii")
     png_b64 = base64.standard_b64encode(diagram_png).decode("ascii")
     zip_b64 = base64.standard_b64encode(bundle_zip).decode("ascii")
 
     project.generated_files = {
         "prd.docx": {"encoding": "base64", "data": prd_b64},
+        "hld.docx": {"encoding": "base64", "data": hld_b64},
         "lld.docx": {"encoding": "base64", "data": lld_b64},
         "architecture.md": {"encoding": "text", "data": architecture_md},
         "evolution.md": {"encoding": "text", "data": evolution_md},

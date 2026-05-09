@@ -95,6 +95,7 @@ def _artifact_zip_bytes(files: dict[str, Any]) -> bytes:
 
     keys = (
         "prd.docx",
+        "hld.docx",
         "lld.docx",
         "architecture.md",
         "evolution.md",

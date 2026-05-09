@@ -1,0 +1,5 @@
+High-level design for {{ project_title }} ({{ domain }}). This document bridges product intent (PRD) and implementation detail (LLD): logical decomposition, major technology choices, and cross-cutting operational concerns.
+
+Architecture pattern: **{{ pattern }}**. {% if total_cost is not none %}Estimated aggregate managed-component baseline cost: **${{ "{:,.0f}".format(total_cost) }}**/month.{% else %}Cost baseline to be refined after sizing exercises.{% endif %}
+
+{% if has_ai %}AI/ML capabilities are in scope — selections below should align with inference, training, or retrieval workloads as applicable.{% endif %}
