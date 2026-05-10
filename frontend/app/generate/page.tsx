@@ -8,7 +8,7 @@ import { DownloadPanel } from "@/components/DownloadPanel";
 import { GenerationProgress } from "@/components/GenerationProgress";
 import { Button } from "@/components/ui/button";
 import type { JobPreviewResponse, JobStatusResponse } from "@/lib/types";
-import { Sparkles, ChevronRight } from "lucide-react";
+import { BookMarked, ChevronRight, FileUp, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const POLL_MS = 1200;
@@ -34,6 +34,8 @@ export default function GeneratePage() {
   const base = `${apiUrl}/api/v1`;
 
   const [requirement, setRequirement] = useState("");
+  const [existingFile, setExistingFile] = useState<File | null>(null);
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<JobStatusResponse | null>(null);
   const [preview, setPreview] = useState<JobPreviewResponse | null>(null);
@@ -101,19 +103,38 @@ export default function GeneratePage() {
     }
   }, [categories]); // intentionally omit selectedCategory — only auto-select when categories first arrive
 
+  const hasPrimaryInput = Boolean(requirement.trim()) || Boolean(existingFile);
+  const docAccept = ".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown";
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setPreview(null);
     setStatus(null);
     setJobId(null);
+    if (!hasPrimaryInput) {
+      setError("Add written requirements or upload a project document to enhance.");
+      return;
+    }
     setBusy(true);
     try {
-      const res = await fetch(`${base}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requirement, selected_documents: Array.from(selectedDocs) }),
-      });
+      const useUpload = Boolean(existingFile || referenceFile);
+      let res: Response;
+      if (useUpload) {
+        const fd = new FormData();
+        fd.append("requirement", requirement.trim());
+        fd.append("selected_documents", JSON.stringify(Array.from(selectedDocs)));
+        fd.append("options", JSON.stringify({}));
+        if (existingFile) fd.append("existing_document", existingFile);
+        if (referenceFile) fd.append("reference_document", referenceFile);
+        res = await fetch(`${base}/generate/upload`, { method: "POST", body: fd });
+      } else {
+        res = await fetch(`${base}/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requirement, selected_documents: Array.from(selectedDocs) }),
+        });
+      }
       if (!res.ok) throw new Error(await res.text());
       const body = (await res.json()) as { job_id: string };
       setJobId(body.job_id);
@@ -141,8 +162,9 @@ export default function GeneratePage() {
           Generate System Design
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Describe your system requirements in natural language. Claude AI will parse, select
-          components, and generate PRD, HLD, LLD, and architecture diagrams.
+          Describe your system in natural language, upload an existing PRD/HLD/LLD to enhance, and
+          optionally add a reference document for style and depth. Claude parses the combined input,
+          selects components, and generates PRD, HLD, LLD, evolution notes, and diagrams.
         </p>
       </div>
 
@@ -150,10 +172,12 @@ export default function GeneratePage() {
         {/* Main column */}
         <div className="space-y-6">
           {/* Input form */}
-          <form onSubmit={onSubmit} className="rounded-xl border border-border/60 bg-card p-6 space-y-4">
+          <form onSubmit={onSubmit} className="rounded-xl border border-border/60 bg-card p-6 space-y-5">
             <label htmlFor="requirement" className="block text-sm font-medium text-foreground">
-              System Requirement{" "}
-              <span className="text-muted-foreground font-normal">(required)</span>
+              Written instructions{" "}
+              <span className="text-muted-foreground font-normal">
+                (required unless you upload a project document below)
+              </span>
             </label>
             <textarea
               id="requirement"
@@ -163,11 +187,67 @@ export default function GeneratePage() {
               placeholder="e.g. Design a RAG assistant for internal docs with 100K users, PostgreSQL + Redis, deployed on AWS, targeting 99.9% uptime and GDPR compliance…"
               className="w-full resize-none rounded-lg border border-input bg-muted/30 px-3 py-2.5 text-sm text-foreground shadow-sm outline-none ring-offset-background placeholder:text-muted-foreground/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring transition"
               aria-describedby="req-helper"
-              required
+              aria-required={!existingFile}
             />
             <p id="req-helper" className="text-xs text-muted-foreground">
-              Include scale (users, requests/sec), domain, tech preferences, and compliance needs for best results.
+              Include scale (users, requests/sec), domain, tech preferences, and compliance needs. Combine
+              with uploads: the model treats an uploaded project doc as ground truth and uses a reference doc
+              for tone and thoroughness—not as the product definition unless it clearly matches your system.
             </p>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <FileUp className="h-4 w-4 text-green-400 shrink-0" aria-hidden />
+                  Enhance existing project doc
+                  <span className="font-normal text-xs text-muted-foreground">(optional)</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  PRD, HLD, LLD, or mixed architecture notes (.docx, .pdf, .md, .txt). The pipeline
+                  deepens completeness while preserving factual content from your upload.
+                </p>
+                <input
+                  type="file"
+                  accept={docAccept}
+                  className="w-full cursor-pointer text-xs text-muted-foreground file:mr-2 file:cursor-pointer file:rounded file:border file:border-border/60 file:bg-muted/50 file:px-2 file:py-1 file:text-foreground file:text-xs hover:file:bg-muted"
+                  aria-label="Upload existing project document to enhance"
+                  onChange={(ev) =>
+                    setExistingFile(ev.target.files && ev.target.files[0] ? ev.target.files[0] : null)
+                  }
+                />
+                {existingFile && (
+                  <p className="text-xs text-green-400/90 truncate" title={existingFile.name}>
+                    Selected: {existingFile.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <BookMarked className="h-4 w-4 text-sky-400 shrink-0" aria-hidden />
+                  Reference document
+                  <span className="font-normal text-xs text-muted-foreground">(optional)</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Internal template, past deliverable, or style guide. Used to align structure and depth
+                  with your org—your written instructions and project upload still take precedence on facts.
+                </p>
+                <input
+                  type="file"
+                  accept={docAccept}
+                  className="w-full cursor-pointer text-xs text-muted-foreground file:mr-2 file:cursor-pointer file:rounded file:border file:border-border/60 file:bg-muted/50 file:px-2 file:py-1 file:text-foreground file:text-xs hover:file:bg-muted"
+                  aria-label="Upload reference document"
+                  onChange={(ev) =>
+                    setReferenceFile(ev.target.files && ev.target.files[0] ? ev.target.files[0] : null)
+                  }
+                />
+                {referenceFile && (
+                  <p className="text-xs text-sky-400/90 truncate" title={referenceFile.name}>
+                    Selected: {referenceFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Example prompts */}
             <div className="space-y-2">
@@ -189,7 +269,7 @@ export default function GeneratePage() {
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button
                 type="submit"
-                disabled={busy || !requirement.trim() || isInProgress}
+                disabled={busy || !hasPrimaryInput || isInProgress}
                 aria-busy={busy}
                 className="bg-green-500 text-slate-950 hover:bg-green-400 font-semibold glow-green-sm disabled:opacity-50"
               >

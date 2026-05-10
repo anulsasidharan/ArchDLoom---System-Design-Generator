@@ -94,9 +94,31 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     db.commit()
 
     blob = dict(project.requirements or {})
-    user_input = blob.get("user_input")
-    if not user_input or not isinstance(user_input, str):
-        _fail_job(db, job, "Missing user_input on project requirements")
+    user_input = blob.get("user_input") if isinstance(blob.get("user_input"), str) else ""
+    user_input = user_input.strip()
+    existing_doc = blob.get("existing_document")
+    reference_doc = blob.get("reference_document")
+    existing_text: str | None = None
+    existing_fn: str | None = None
+    reference_text: str | None = None
+    reference_fn: str | None = None
+    if isinstance(existing_doc, dict):
+        t = existing_doc.get("text")
+        if isinstance(t, str) and t.strip():
+            existing_text = t.strip()
+        fn = existing_doc.get("filename")
+        if isinstance(fn, str):
+            existing_fn = fn
+    if isinstance(reference_doc, dict):
+        t = reference_doc.get("text")
+        if isinstance(t, str) and t.strip():
+            reference_text = t.strip()
+        fn = reference_doc.get("filename")
+        if isinstance(fn, str):
+            reference_fn = fn
+
+    if not user_input and not existing_text:
+        _fail_job(db, job, "Provide written requirements or upload a project document to enhance")
         return
 
     selected_docs: list[str] = blob.get("selected_documents") or []
@@ -107,8 +129,19 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     options = _load_options(blob)
     parser = RequirementParser(client)
 
+    parse_input = user_input or (
+        "The user supplied only an uploaded project document; derive all structured fields "
+        "from that document and any optional reference material."
+    )
     try:
-        parsed = parser.parse(user_input, options)
+        parsed = parser.parse(
+            parse_input,
+            options,
+            existing_document_text=existing_text,
+            existing_document_filename=existing_fn,
+            reference_document_text=reference_text,
+            reference_document_filename=reference_fn,
+        )
     except RequirementParseError as e:
         _fail_job(db, job, str(e))
         return
