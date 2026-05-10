@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import base64
-from typing import Any
+import json
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -16,6 +17,7 @@ from app.domain.generation import GenerationOptions
 from app.models.generation_job import GenerationJob
 from app.models.project import Project
 from app.services.artifact_bundle import build_zip_bundle
+from app.services.document_text_extraction import DocumentExtractError, extract_plain_text
 from app.workers.tasks import run_generation_job
 
 router = APIRouter(tags=["generation"])
@@ -54,6 +56,94 @@ def _preview_title(text: str, max_len: int = 120) -> str:
     if len(line) > max_len:
         return line[: max_len - 1] + "…"
     return line
+
+
+def _project_title(requirement: str, existing_plain: str | None) -> str:
+    if requirement.strip():
+        return _preview_title(requirement)
+    if existing_plain and existing_plain.strip():
+        return _preview_title(existing_plain)
+    return "Untitled design"
+
+
+async def _read_extracted_optional(upload: UploadFile | None) -> dict[str, str] | None:
+    if upload is None:
+        return None
+    name = (upload.filename or "").strip()
+    if not name:
+        return None
+    data = await upload.read()
+    text = extract_plain_text(name, data)
+    return {
+        "filename": name,
+        "text": text,
+        "content_type": (upload.content_type or "").strip(),
+    }
+
+
+@router.post("/generate/upload", status_code=202, response_model=GenerateResponse)
+async def enqueue_generation_upload(
+    requirement: Annotated[str, Form()] = "",
+    selected_documents: Annotated[str, Form()] = "[]",
+    options_json: Annotated[str, Form(alias="options")] = "{}",
+    existing_document: Annotated[
+        UploadFile | None,
+        File(description="Existing PRD, HLD, LLD, or similar to enhance."),
+    ] = None,
+    reference_document: Annotated[
+        UploadFile | None,
+        File(description="Optional reference for style and depth."),
+    ] = None,
+    db: Session = Depends(get_db),
+) -> GenerateResponse:
+    """Enqueue generation with optional document uploads (.txt, .md, .docx, .pdf)."""
+    try:
+        selected_list = json.loads(selected_documents or "[]")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"selected_documents must be JSON: {e}") from e
+    if not isinstance(selected_list, list):
+        raise HTTPException(status_code=400, detail="selected_documents must be a JSON array")
+
+    try:
+        opts = GenerationOptions.model_validate(json.loads(options_json or "{}"))
+    except (json.JSONDecodeError, ValidationError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid options JSON: {e}") from e
+
+    try:
+        existing_blob = await _read_extracted_optional(existing_document)
+        reference_blob = await _read_extracted_optional(reference_document)
+    except DocumentExtractError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    req_stripped = requirement.strip()
+    existing_text = (existing_blob or {}).get("text", "")
+    if not req_stripped and not (isinstance(existing_text, str) and existing_text.strip()):
+        raise HTTPException(
+            status_code=400,
+            detail="Provide written requirements or upload a project document to enhance.",
+        )
+
+    title = _project_title(requirement, existing_text if isinstance(existing_text, str) else None)
+    project = Project(
+        name=title,
+        requirements={
+            "user_input": req_stripped,
+            "options": opts.model_dump(),
+            "selected_documents": selected_list,
+            "existing_document": existing_blob,
+            "reference_document": reference_blob,
+        },
+        component_selections={},
+        status="pending",
+    )
+    db.add(project)
+    db.flush()
+    job = GenerationJob(project_id=project.id, status="queued", progress=0)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    run_generation_job.delay(str(job.id))
+    return GenerateResponse(job_id=str(job.id))
 
 
 @router.post("/generate", status_code=202, response_model=GenerateResponse)
