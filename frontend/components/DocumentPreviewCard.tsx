@@ -107,12 +107,22 @@ export function DocumentPreviewCard({ type, systemName }: Props) {
   );
 }
 
-export function DocumentPreviewGrid({ systemName }: { systemName?: string }) {
-  const types: DocType[] = ["prd", "hld", "lld", "evolution", "architecture"];
+export function DocumentPreviewGrid({
+  systemName,
+  selectedTypes,
+}: {
+  systemName?: string;
+  selectedTypes?: Set<DocType>;
+}) {
+  const allTypes: DocType[] = ["prd", "hld", "lld", "evolution", "architecture"];
+  const types = selectedTypes ? allTypes.filter((t) => selectedTypes.has(t)) : allTypes;
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-foreground">Generated Documents</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">Generated Documents</p>
+        <span className="text-xs text-muted-foreground">{types.length} file{types.length !== 1 ? "s" : ""}</span>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {types.map((type) => (
           <DocumentPreviewCard key={type} type={type} systemName={systemName} />

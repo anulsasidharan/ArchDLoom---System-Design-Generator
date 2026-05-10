@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import generation as generation_routes
 from app.api.routes import health as health_routes
@@ -28,6 +29,18 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
+    )
+    cors_origins = (
+        ["*"]
+        if settings.environment == "development"
+        else [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=False,  # must be False when allow_origins=["*"]
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.include_router(health_routes.router)
     app.include_router(generation_routes.router, prefix="/api/v1")

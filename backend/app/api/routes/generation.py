@@ -24,6 +24,7 @@ router = APIRouter(tags=["generation"])
 class GenerateRequest(BaseModel):
     requirement: str = Field(..., min_length=1)
     options: GenerationOptions | None = None
+    selected_documents: list[str] = Field(default_factory=list)
 
 
 class GenerateResponse(BaseModel):
@@ -60,7 +61,11 @@ def enqueue_generation(body: GenerateRequest, db: Session = Depends(get_db)) -> 
     opts = body.options or GenerationOptions()
     project = Project(
         name=_preview_title(body.requirement),
-        requirements={"user_input": body.requirement.strip(), "options": opts.model_dump()},
+        requirements={
+            "user_input": body.requirement.strip(),
+            "options": opts.model_dump(),
+            "selected_documents": body.selected_documents,
+        },
         component_selections={},
         status="pending",
     )
@@ -114,7 +119,9 @@ def job_preview(job_id: UUID, db: Session = Depends(get_db)) -> JobPreviewRespon
     files = dict(project.generated_files or {})
     mermaid = _decode_generated_text(files, "architecture.mmd")
     svg = _decode_generated_text(files, "architecture.svg")
-    selections = project.component_selections if isinstance(project.component_selections, dict) else {}
+    raw = project.component_selections if isinstance(project.component_selections, dict) else {}
+    # stored as ComponentSelectionResult.model_dump() → unwrap inner "selections" dict
+    selections = raw.get("selections", raw)
     return JobPreviewResponse(
         status=job.status,
         mermaid=mermaid,

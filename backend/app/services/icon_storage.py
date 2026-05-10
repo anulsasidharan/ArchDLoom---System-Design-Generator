@@ -75,9 +75,14 @@ def resolve_icon_bytes(icon_url: str | None, *, category: str = "") -> bytes:
             logger.warning("HTTP icon fetch failed for %s", raw, exc_info=True)
         return _PLACEHOLDER_SVG
 
-    path = Path(raw)
+    # Strip leading /icons/ prefix (public URL convention) to get local path
+    local_raw = raw
+    if local_raw.startswith("/icons/"):
+        local_raw = local_raw[len("/icons/"):]
+
+    path = Path(local_raw)
     if not path.is_absolute():
-        path = _repo_icons_root() / raw.lstrip("/\\")
+        path = _repo_icons_root() / local_raw.lstrip("/\\")
     try:
         if path.is_file():
             return path.read_bytes()

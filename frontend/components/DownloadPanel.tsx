@@ -16,11 +16,14 @@ type DownloadState = "idle" | "loading" | "success" | "error";
 type Props = {
   jobId: string;
   apiBase: string;
+  selectedDocs?: Set<string>;
 };
 
-export function DownloadPanel({ jobId, apiBase }: Props) {
+export function DownloadPanel({ jobId, apiBase, selectedDocs }: Props) {
   const [state, setState] = useState<DownloadState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const visibleFiles = selectedDocs ? FILES.filter((f) => selectedDocs.has(f.key)) : FILES;
 
   const handleDownloadAll = async () => {
     setState("loading");
@@ -36,7 +39,7 @@ export function DownloadPanel({ jobId, apiBase }: Props) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
       setState("success");
       setTimeout(() => setState("idle"), 4000);
     } catch (err) {
@@ -50,13 +53,13 @@ export function DownloadPanel({ jobId, apiBase }: Props) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">Export Package</p>
-          <p className="text-xs text-muted-foreground mt-0.5">5 documents ready to download</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{visibleFiles.length} document{visibleFiles.length !== 1 ? "s" : ""} ready to download</p>
         </div>
         <Package className="h-5 w-5 text-muted-foreground shrink-0" aria-hidden />
       </div>
 
       <ul className="space-y-2" role="list" aria-label="Generated files">
-        {FILES.map((file) => {
+        {visibleFiles.map((file) => {
           const Icon = file.icon;
           return (
             <li
@@ -115,7 +118,7 @@ export function DownloadPanel({ jobId, apiBase }: Props) {
       </button>
 
       <p className="text-center text-xs text-muted-foreground">
-        ZIP includes all 5 files · Generated for job{" "}
+        ZIP includes {visibleFiles.length} file{visibleFiles.length !== 1 ? "s" : ""} · Job{" "}
         <code className="rounded bg-muted px-1 font-mono">{jobId.slice(0, 8)}</code>
       </p>
     </div>
