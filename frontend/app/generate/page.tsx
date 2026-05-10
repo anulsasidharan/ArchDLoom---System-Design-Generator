@@ -3,6 +3,7 @@
 import { ComponentDetailPanel } from "@/components/ComponentDetailPanel";
 import { DiagramViewer } from "@/components/DiagramViewer";
 import { DocumentPreviewGrid } from "@/components/DocumentPreviewCard";
+import type { DocType } from "@/components/DocumentPreviewCard";
 import { DownloadPanel } from "@/components/DownloadPanel";
 import { GenerationProgress } from "@/components/GenerationProgress";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,16 @@ import { Sparkles, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const POLL_MS = 1200;
+
+const DOC_ITEMS: { key: DocType; abbr: string; desc: string }[] = [
+  { key: "prd",          abbr: "PRD", desc: "Business requirements & user stories" },
+  { key: "hld",          abbr: "HLD", desc: "System architecture & component rationale" },
+  { key: "lld",          abbr: "LLD", desc: "Schema design & service internals" },
+  { key: "evolution",    abbr: "Evo", desc: "MVP → Growth → Enterprise roadmap" },
+  { key: "architecture", abbr: "Dia", desc: "Architecture with real vendor icons" },
+];
+
+const ALL_DOCS = new Set<DocType>(DOC_ITEMS.map((d) => d.key));
 
 const EXAMPLE_PROMPTS = [
   "Design a RAG-based internal knowledge assistant for a 500-person company using PostgreSQL and AWS infrastructure, targeting 99.9% uptime.",
@@ -29,6 +40,21 @@ export default function GeneratePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<Set<DocType>>(new Set(ALL_DOCS));
+
+  const toggleDoc = (key: DocType) => {
+    setSelectedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size === 1) return prev; // keep at least one
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   const selections = useMemo(() => preview?.component_selections ?? {}, [preview]);
   const categories = useMemo(() => Object.keys(selections).sort(), [selections]);
@@ -73,7 +99,7 @@ export default function GeneratePage() {
     if (!selectedCategory && categories.length) {
       setSelectedCategory(categories[0] ?? null);
     }
-  }, [categories, selectedCategory]);
+  }, [categories]); // intentionally omit selectedCategory — only auto-select when categories first arrive
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +112,7 @@ export default function GeneratePage() {
       const res = await fetch(`${base}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requirement }),
+        body: JSON.stringify({ requirement, selected_documents: Array.from(selectedDocs) }),
       });
       if (!res.ok) throw new Error(await res.text());
       const body = (await res.json()) as { job_id: string };
@@ -205,19 +231,19 @@ export default function GeneratePage() {
                     <li key={c}>
                       <button
                         type="button"
-                        onClick={() => setSelectedCategory(c)}
+                        onClick={() => { setSelectedCategory(c); setPanelOpen(true); }}
                         className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                          selectedCategory === c
+                          panelOpen && selectedCategory === c
                             ? "border-green-500/40 bg-green-500/10 text-foreground"
                             : "border-border/60 bg-card hover:border-border hover:bg-muted/40 text-muted-foreground hover:text-foreground"
                         }`}
-                        aria-pressed={selectedCategory === c}
+                        aria-pressed={panelOpen && selectedCategory === c}
                       >
                         <span className="block font-medium capitalize text-foreground">
                           {c.replace(/_/g, " ")}
                         </span>
                         <span className="block text-xs text-muted-foreground mt-0.5 truncate">
-                          {selections[c]?.selected.name}
+                          {selections[c]?.selected?.name}
                         </span>
                       </button>
                     </li>
@@ -226,7 +252,7 @@ export default function GeneratePage() {
               </div>
 
               {/* Document previews */}
-              <DocumentPreviewGrid />
+              <DocumentPreviewGrid selectedTypes={selectedDocs} />
             </div>
           )}
         </div>
@@ -236,25 +262,53 @@ export default function GeneratePage() {
           {/* Generation guide */}
           {!jobId && (
             <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
-              <p className="text-sm font-semibold text-foreground">What gets generated</p>
-              <ul className="space-y-3" role="list">
-                {[
-                  { label: "PRD", desc: "Business requirements & user stories" },
-                  { label: "HLD", desc: "System architecture & component rationale" },
-                  { label: "LLD", desc: "Schema design & service internals" },
-                  { label: "Evolution", desc: "MVP → Growth → Enterprise roadmap" },
-                  { label: "Diagrams", desc: "Architecture with real vendor icons" },
-                ].map((item) => (
-                  <li key={item.label} className="flex items-start gap-3 text-xs">
-                    <span className="mt-0.5 inline-flex h-5 w-8 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground font-mono font-medium">
-                      {item.label.slice(0, 3)}
-                    </span>
-                    <span className="text-muted-foreground">{item.desc}</span>
-                  </li>
-                ))}
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-foreground">What gets generated</p>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {selectedDocs.size}/{DOC_ITEMS.length} selected
+                </span>
+              </div>
+
+              <ul className="space-y-1.5" role="list">
+                {DOC_ITEMS.map((item) => {
+                  const checked = selectedDocs.has(item.key);
+                  return (
+                    <li key={item.key}>
+                      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg p-1.5 transition hover:bg-muted/40 group">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDoc(item.key)}
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-green-500 rounded"
+                          aria-label={`Include ${item.abbr} in generation`}
+                        />
+                        <span
+                          className={`mt-0.5 inline-flex h-5 w-8 shrink-0 items-center justify-center rounded font-mono text-xs font-medium transition ${
+                            checked
+                              ? "bg-green-500/15 text-green-400"
+                              : "bg-muted text-muted-foreground/50"
+                          }`}
+                        >
+                          {item.abbr}
+                        </span>
+                        <span
+                          className={`text-xs leading-snug transition ${
+                            checked
+                              ? "text-muted-foreground group-hover:text-foreground"
+                              : "text-muted-foreground/40 line-through"
+                          }`}
+                        >
+                          {item.desc}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
               </ul>
+
               <p className="text-xs text-muted-foreground border-t border-border/60 pt-3">
-                Average generation time: <span className="text-foreground font-medium">2–3 minutes</span>
+                Average generation time:{" "}
+                <span className="text-foreground font-medium">2–3 minutes</span>
               </p>
             </div>
           )}
@@ -262,7 +316,7 @@ export default function GeneratePage() {
           {/* Download panel when complete */}
           {isCompleted && jobId && (
             <div className="animate-fade-in">
-              <DownloadPanel jobId={jobId} apiBase={base} />
+              <DownloadPanel jobId={jobId} apiBase={base} selectedDocs={selectedDocs} />
             </div>
           )}
 
@@ -293,9 +347,9 @@ export default function GeneratePage() {
       </div>
 
       <ComponentDetailPanel
-        category={selectedCategory}
-        decision={activeDecision}
-        onClose={() => setSelectedCategory(null)}
+        category={panelOpen ? selectedCategory : null}
+        decision={panelOpen ? activeDecision : null}
+        onClose={() => setPanelOpen(false)}
       />
     </main>
   );

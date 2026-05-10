@@ -99,6 +99,11 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         _fail_job(db, job, "Missing user_input on project requirements")
         return
 
+    selected_docs: list[str] = blob.get("selected_documents") or []
+    # Empty list = generate everything (backwards-compat)
+    def _want(key: str) -> bool:
+        return not selected_docs or key in selected_docs
+
     options = _load_options(blob)
     parser = RequirementParser(client)
 
@@ -159,25 +164,29 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     job.current_step = "render_architecture_markdown"
     db.commit()
 
+    architecture_md: str | None = None
+    evolution_md: str | None = None
     try:
-        architecture_md = generate_architecture_markdown(
-            parsed,
-            selection,
-            mermaid_source=mermaid,
-            project_title=parsed.system_name,
-            supplementary_mermaid=flow_mermaid or None,
-            network_mermaid=network_mermaid or None,
-            cost=cost_estimate,
-            compliance_mapping=compliance_mapping,
-            security=security_plan,
-            hadr=hadr_strategy,
-            observability=observability_plan,
-        )
-        evolution_md = generate_evolution_markdown(
-            parsed,
-            selection,
-            project_title=parsed.system_name,
-        )
+        if _want("architecture"):
+            architecture_md = generate_architecture_markdown(
+                parsed,
+                selection,
+                mermaid_source=mermaid,
+                project_title=parsed.system_name,
+                supplementary_mermaid=flow_mermaid or None,
+                network_mermaid=network_mermaid or None,
+                cost=cost_estimate,
+                compliance_mapping=compliance_mapping,
+                security=security_plan,
+                hadr=hadr_strategy,
+                observability=observability_plan,
+            )
+        if _want("evolution"):
+            evolution_md = generate_evolution_markdown(
+                parsed,
+                selection,
+                project_title=parsed.system_name,
+            )
     except Exception as e:
         logger.exception("Markdown artifact generation failed")
         _fail_job(db, job, f"Markdown artifact generation failed: {e}")
@@ -224,31 +233,37 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     job.current_step = "generate_documents"
     db.commit()
 
+    prd_bytes: bytes | None = None
+    hld_bytes: bytes | None = None
+    lld_bytes: bytes | None = None
     try:
-        prd_bytes = generate_prd_docx(
-            parsed,
-            selection,
-            project_title=parsed.system_name,
-            diagram_png=diagram_png,
-        )
-        hld_bytes = generate_hld_docx(
-            parsed,
-            selection,
-            project_title=parsed.system_name,
-            diagram_png=diagram_png,
-            network_png=network_png,
-            cost=cost_estimate,
-            compliance_mapping=compliance_mapping,
-            security=security_plan,
-            hadr=hadr_strategy,
-            observability=observability_plan,
-        )
-        lld_bytes = generate_lld_docx(
-            parsed,
-            selection,
-            project_title=parsed.system_name,
-            diagram_png=diagram_png,
-        )
+        if _want("prd"):
+            prd_bytes = generate_prd_docx(
+                parsed,
+                selection,
+                project_title=parsed.system_name,
+                diagram_png=diagram_png,
+            )
+        if _want("hld"):
+            hld_bytes = generate_hld_docx(
+                parsed,
+                selection,
+                project_title=parsed.system_name,
+                diagram_png=diagram_png,
+                network_png=network_png,
+                cost=cost_estimate,
+                compliance_mapping=compliance_mapping,
+                security=security_plan,
+                hadr=hadr_strategy,
+                observability=observability_plan,
+            )
+        if _want("lld"):
+            lld_bytes = generate_lld_docx(
+                parsed,
+                selection,
+                project_title=parsed.system_name,
+                diagram_png=diagram_png,
+            )
     except Exception as e:
         logger.exception("Word artifact generation failed")
         _fail_job(db, job, f"Word artifact generation failed: {e}")
@@ -258,23 +273,27 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
     job.current_step = "zip_bundle"
     db.commit()
 
-    bundle_files = {
-        "prd.docx": prd_bytes,
-        "hld.docx": hld_bytes,
-        "lld.docx": lld_bytes,
-        "architecture.md": architecture_md.encode("utf-8"),
-        "evolution.md": evolution_md.encode("utf-8"),
-        "architecture.mmd": mermaid.encode("utf-8"),
-        "architecture.svg": enhanced_svg.encode("utf-8"),
-        "architecture.png": diagram_png,
-        "network.mmd": network_mermaid.encode("utf-8"),
-    }
-    if flow_mermaid.strip():
-        bundle_files["architecture-flow.mmd"] = flow_mermaid.encode("utf-8")
-    if network_svg:
-        bundle_files["network.svg"] = network_svg.encode("utf-8")
-    if network_png:
-        bundle_files["network.png"] = network_png
+    bundle_files: dict[str, bytes] = {}
+    if prd_bytes:
+        bundle_files["prd.docx"] = prd_bytes
+    if hld_bytes:
+        bundle_files["hld.docx"] = hld_bytes
+    if lld_bytes:
+        bundle_files["lld.docx"] = lld_bytes
+    if evolution_md:
+        bundle_files["evolution.md"] = evolution_md.encode("utf-8")
+    if architecture_md:
+        bundle_files["architecture.md"] = architecture_md.encode("utf-8")
+        bundle_files["architecture.mmd"] = mermaid.encode("utf-8")
+        bundle_files["architecture.svg"] = enhanced_svg.encode("utf-8")
+        bundle_files["architecture.png"] = diagram_png
+        bundle_files["network.mmd"] = network_mermaid.encode("utf-8")
+        if flow_mermaid.strip():
+            bundle_files["architecture-flow.mmd"] = flow_mermaid.encode("utf-8")
+        if network_svg:
+            bundle_files["network.svg"] = network_svg.encode("utf-8")
+        if network_png:
+            bundle_files["network.png"] = network_png
 
     try:
         bundle_zip = build_zip_bundle(bundle_files)
@@ -283,25 +302,28 @@ def _run_job_body(db: Session, job_id: uuid.UUID) -> None:
         _fail_job(db, job, f"ZIP bundling failed: {e}")
         return
 
-    prd_b64 = base64.standard_b64encode(prd_bytes).decode("ascii")
-    hld_b64 = base64.standard_b64encode(hld_bytes).decode("ascii")
-    lld_b64 = base64.standard_b64encode(lld_bytes).decode("ascii")
     png_b64 = base64.standard_b64encode(diagram_png).decode("ascii")
     zip_b64 = base64.standard_b64encode(bundle_zip).decode("ascii")
     svg_b64 = base64.standard_b64encode(enhanced_svg.encode("utf-8")).decode("ascii")
 
+    # Always store diagram artifacts for the frontend viewer
     gen_files: dict[str, dict[str, str]] = {
-        "prd.docx": {"encoding": "base64", "data": prd_b64},
-        "hld.docx": {"encoding": "base64", "data": hld_b64},
-        "lld.docx": {"encoding": "base64", "data": lld_b64},
-        "architecture.md": {"encoding": "text", "data": architecture_md},
-        "evolution.md": {"encoding": "text", "data": evolution_md},
         "architecture.mmd": {"encoding": "text", "data": mermaid},
         "architecture.svg": {"encoding": "base64", "data": svg_b64},
         "architecture.png": {"encoding": "base64", "data": png_b64},
         "network.mmd": {"encoding": "text", "data": network_mermaid},
         "bundle.zip": {"encoding": "base64", "data": zip_b64},
     }
+    if prd_bytes:
+        gen_files["prd.docx"] = {"encoding": "base64", "data": base64.standard_b64encode(prd_bytes).decode("ascii")}
+    if hld_bytes:
+        gen_files["hld.docx"] = {"encoding": "base64", "data": base64.standard_b64encode(hld_bytes).decode("ascii")}
+    if lld_bytes:
+        gen_files["lld.docx"] = {"encoding": "base64", "data": base64.standard_b64encode(lld_bytes).decode("ascii")}
+    if architecture_md:
+        gen_files["architecture.md"] = {"encoding": "text", "data": architecture_md}
+    if evolution_md:
+        gen_files["evolution.md"] = {"encoding": "text", "data": evolution_md}
     if flow_mermaid.strip():
         gen_files["architecture-flow.mmd"] = {"encoding": "text", "data": flow_mermaid}
     if network_svg:

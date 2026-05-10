@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from app.domain.components import ArchitecturePattern, ComponentSelectionResult
 
 
@@ -129,7 +131,10 @@ def generate_aiml_supplementary_mermaid(
 def _safe_label(key: str, components: ComponentSelectionResult, fallback: str) -> str:
     dec = components.selections.get(key)
     if dec:
-        return dec.selected.name.replace('"', "'")
+        name = dec.selected.name.replace('"', "'")
+        # Strip chars that break Mermaid node label syntax
+        name = re.sub(r'[(){}\[\]<>|]', '', name).strip()
+        return name or fallback
     return fallback
 
 
@@ -316,7 +321,7 @@ def _rag_sequence(cs: ComponentSelectionResult, *, title: str) -> str:
     L-->>A: Answer + citations
     A-->>G: Response
     G-->>U: Result
-    Note over A,{title}: RAG query path (high level)
+    Note over A,L: RAG query path (high level)
 """
 
 
@@ -335,7 +340,7 @@ def _finetune_sequence(cs: ComponentSelectionResult, *, title: str) -> str:
     Q->>T: Schedule GPUs
     T->>R: Push checkpoint
     R->>O: Evaluation hooks
-    Note over O,R: {title} training lifecycle
+    Note over O,R: Training lifecycle
 """
 
 
@@ -355,7 +360,7 @@ def _inference_sequence(cs: ComponentSelectionResult, *, title: str) -> str:
     M-->>I: Streams / logits
     I-->>G: Normalized response
     G-->>C: Low-latency reply
-    Note over C,M: {title} latency path
+    Note over C,M: Latency path
 """
 
 
@@ -376,5 +381,5 @@ def _agentic_sequence(cs: ComponentSelectionResult, *, title: str) -> str:
       T-->>A: Observations
     end
     A-->>U: Final response
-    Note over U,T: {title} agent loop
+    Note over U,T: Agent loop
 """

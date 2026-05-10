@@ -28,8 +28,11 @@ class Settings(BaseSettings):
             return "postgresql+psycopg://" + v[len("postgresql://") :]
         return v
 
+    # Comma-separated origins, e.g. "http://localhost:3000,https://app.example.com"
+    cors_origins: str = "http://localhost:3000"
+
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-3-5-sonnet-20241022"
+    anthropic_model: str = "claude-sonnet-4-6"
     secret_key: str = "change-me-in-production"
     celery_broker_url: str | None = None
     celery_result_backend: str | None = None

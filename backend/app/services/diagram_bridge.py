@@ -15,6 +15,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
+_PUPPETEER_CONFIG = "/puppeteer-config.json"
+
 
 def render_mermaid_to_svg(mermaid_source: str, *, title: str = "Architecture") -> str:
     """Render Mermaid text to SVG markup using ``mmdc`` when available."""
@@ -34,13 +36,10 @@ def _mermaid_cli_svg(mmdc: str, mermaid_source: str) -> str:
         src.write_text(mermaid_source, encoding="utf-8")
         pup = os.environ.get("PUPPETEER_EXECUTABLE_PATH", "")
         env = {**os.environ, "PUPPETEER_EXECUTABLE_PATH": pup}
-        proc = subprocess.run(
-            [mmdc, "-i", str(src), "-o", str(out), "-b", "transparent"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env=env,
-        )
+        cmd = [mmdc, "-i", str(src), "-o", str(out), "-b", "transparent"]
+        if Path(_PUPPETEER_CONFIG).is_file():
+            cmd += ["--puppeteerConfigFile", _PUPPETEER_CONFIG]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
         if proc.returncode != 0 or not out.is_file():
             raise RuntimeError(proc.stderr or proc.stdout or "mmdc failed")
         return out.read_text(encoding="utf-8")
@@ -90,13 +89,10 @@ def _mermaid_cli_png(mmdc: str, mermaid_source: str) -> bytes:
         src.write_text(mermaid_source, encoding="utf-8")
         pup = os.environ.get("PUPPETEER_EXECUTABLE_PATH", "")
         env = {**os.environ, "PUPPETEER_EXECUTABLE_PATH": pup}
-        proc = subprocess.run(
-            [mmdc, "-i", str(src), "-o", str(out), "-b", "transparent"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env=env,
-        )
+        cmd = [mmdc, "-i", str(src), "-o", str(out), "-b", "transparent"]
+        if Path(_PUPPETEER_CONFIG).is_file():
+            cmd += ["--puppeteerConfigFile", _PUPPETEER_CONFIG]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
         if proc.returncode != 0 or not out.is_file():
             raise RuntimeError(proc.stderr or proc.stdout or "mmdc failed")
         return out.read_bytes()
