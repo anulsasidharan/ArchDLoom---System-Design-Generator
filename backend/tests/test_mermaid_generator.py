@@ -36,6 +36,7 @@ def _minimal_selection(pattern: ArchitecturePattern) -> ComponentSelectionResult
 
 def test_three_tier_contains_graph() -> None:
     src = generate_architecture_mermaid(_minimal_selection(ArchitecturePattern.THREE_TIER))
+    assert "%%{init:" in src
     assert "graph TB" in src
 
 

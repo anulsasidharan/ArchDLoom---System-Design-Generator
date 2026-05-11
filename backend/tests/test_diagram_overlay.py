@@ -17,6 +17,8 @@ def test_overlay_injects_foreign_markup() -> None:
       </g>
     </svg>"""
     icon = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="blue"/></svg>'
-    out, warns = overlay_icons_on_mermaid_svg(svg, [("GW", icon, "$100/mo")])
+    out, warns = overlay_icons_on_mermaid_svg(svg, [("GW", icon, "$100/mo", "API Gateway")])
     assert "archdloom-icon-overlay" in out
+    assert "archdloom-node-caption" in out
+    assert "API Gateway" in out
     assert not any(w.startswith("missing_node") for w in warns)
