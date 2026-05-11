@@ -100,6 +100,14 @@ def find_node_root(svg_root: etree._Element, node_id: str) -> etree._Element | N
     return ranked[0][1]
 
 
+def _suppress_mermaid_node_labels(node_g: etree._Element) -> None:
+    """Hide Mermaid HTML labels so our icon + caption replace them instead of stacking."""
+    for el in node_g.iterdescendants():
+        if _local_tag(el) == "foreignObject":
+            el.set("visibility", "hidden")
+            el.set("pointer-events", "none")
+
+
 def collect_outer_bbox(node_g: etree._Element) -> tuple[float, float, float, float] | None:
     shapes: list[etree._Element] = []
     for child in node_g:
@@ -147,15 +155,23 @@ def _icon_intrinsic_size(icon_bytes: bytes) -> tuple[float, float]:
         return 64.0, 64.0
 
 
+def _truncate_caption(s: str, max_len: int = 44) -> str:
+    s = s.strip()
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1].rstrip() + "…"
+
+
 def inject_overlay_for_node(
     svg_root: etree._Element,
     node_id: str,
     icon_bytes: bytes,
     annotation: str | None,
     *,
+    caption: str | None = None,
     overlay_class: str = "archdloom-icon-overlay",
 ) -> bool:
-    """Insert icon + optional annotation inside the node's group. Returns True if attached."""
+    """Insert icon, optional in-node caption, and optional annotation. Returns True if attached."""
     node_g = find_node_root(svg_root, node_id)
     if node_g is None:
         logger.debug("No SVG node group matched id hint %r", node_id)
@@ -167,24 +183,74 @@ def inject_overlay_for_node(
         return False
     bx, by, bw, bh = bbox
 
+    if caption:
+        _suppress_mermaid_node_labels(node_g)
+
     iw, ih = _icon_intrinsic_size(icon_bytes)
-    scale, tx, ty = fit_icon_in_box(bw, bh, iw, ih)
     data_uri = icon_to_data_uri(icon_bytes)
 
     group = etree.Element(f"{{{SVG_NS}}}g")
     group.set("class", overlay_class)
-    inner = etree.Element(f"{{{SVG_NS}}}g")
-    inner.set(
-        "transform",
-        f"translate({bx + tx:.3f},{by + ty:.3f}) scale({scale:.6f})",
-    )
-    img = etree.Element(f"{{{SVG_NS}}}image")
-    img.set("href", data_uri)
-    img.set(f"{{{_XLINK_NS}}}href", data_uri)
-    img.set("width", f"{iw:.3f}")
-    img.set("height", f"{ih:.3f}")
-    inner.append(img)
-    group.append(inner)
+
+    if caption:
+        caption_reserve = min(max(15.0, bh * 0.22), bh * 0.36)
+        icon_band_h = max(bh - caption_reserve, min(bw, bh) * 0.5)
+        scale, tx, ty = fit_icon_in_box(
+            bw,
+            icon_band_h,
+            iw,
+            ih,
+            padding=5.0,
+            max_fill_ratio=0.94,
+        )
+        inner = etree.Element(f"{{{SVG_NS}}}g")
+        inner.set(
+            "transform",
+            f"translate({bx + tx:.3f},{by + ty:.3f}) scale({scale:.6f})",
+        )
+        img = etree.Element(f"{{{SVG_NS}}}image")
+        img.set("href", data_uri)
+        img.set(f"{{{_XLINK_NS}}}href", data_uri)
+        img.set("width", f"{iw:.3f}")
+        img.set("height", f"{ih:.3f}")
+        inner.append(img)
+        group.append(inner)
+
+        cap = _truncate_caption(caption)
+        cap_y = by + icon_band_h + min(12.0, caption_reserve * 0.55)
+        cap_el = etree.Element(f"{{{SVG_NS}}}text")
+        cap_el.set("x", f"{bx + bw / 2:.3f}")
+        cap_el.set("y", f"{cap_y:.3f}")
+        cap_el.set("text-anchor", "middle")
+        fs = min(12.0, max(9.0, bh * 0.14))
+        cap_el.set("font-size", f"{fs:.1f}")
+        cap_el.set("font-family", "system-ui, Segoe UI, Arial, Helvetica, sans-serif")
+        cap_el.set("font-weight", "600")
+        cap_el.set("fill", "#111827")
+        cap_el.set("class", "archdloom-node-caption")
+        cap_el.text = cap
+        group.append(cap_el)
+    else:
+        scale, tx, ty = fit_icon_in_box(
+            bw,
+            bh,
+            iw,
+            ih,
+            padding=6.0,
+            max_fill_ratio=0.62,
+        )
+        inner = etree.Element(f"{{{SVG_NS}}}g")
+        inner.set(
+            "transform",
+            f"translate({bx + tx:.3f},{by + ty:.3f}) scale({scale:.6f})",
+        )
+        img = etree.Element(f"{{{SVG_NS}}}image")
+        img.set("href", data_uri)
+        img.set(f"{{{_XLINK_NS}}}href", data_uri)
+        img.set("width", f"{iw:.3f}")
+        img.set("height", f"{ih:.3f}")
+        inner.append(img)
+        group.append(inner)
 
     if annotation:
         ty_rel = by + bh + 11
@@ -193,9 +259,9 @@ def inject_overlay_for_node(
         text_el.set("x", f"{tx_mid:.3f}")
         text_el.set("y", f"{ty_rel:.3f}")
         text_el.set("text-anchor", "middle")
-        text_el.set("font-size", "10")
-        text_el.set("font-family", "Arial, Helvetica, sans-serif")
-        text_el.set("fill", "#374151")
+        text_el.set("font-size", "9.5")
+        text_el.set("font-family", "system-ui, Segoe UI, Arial, Helvetica, sans-serif")
+        text_el.set("fill", "#4b5563")
         text_el.set("class", "archdloom-node-annotation")
         text_el.text = annotation[:160]
         group.append(text_el)
@@ -206,9 +272,10 @@ def inject_overlay_for_node(
 
 def overlay_icons_on_mermaid_svg(
     svg_xml: str,
-    overlays: list[tuple[str, bytes, str | None]],
+    overlays: list[tuple[str, bytes, str | None, str | None]]
+    | list[tuple[str, bytes, str | None]],
 ) -> tuple[str, list[str]]:
-    """Apply overlays for ``(node_id, icon_bytes, annotation_or_none)``. Returns xml + warnings."""
+    """Apply overlays: ``(node_id, icon, annotation, caption)``; ``caption`` may be omitted."""
     warnings: list[str] = []
     try:
         root = etree.fromstring(svg_xml.encode("utf-8"), parser=etree.XMLParser(huge_tree=True))
@@ -218,8 +285,12 @@ def overlay_icons_on_mermaid_svg(
     if _local_tag(root) != "svg":
         return svg_xml, ["root_not_svg"]
 
-    for node_id, icon_bytes, ann in overlays:
-        ok = inject_overlay_for_node(root, node_id, icon_bytes, ann)
+    for row in overlays:
+        node_id = row[0]
+        icon_bytes = row[1]
+        ann = row[2]
+        cap: str | None = row[3] if len(row) > 3 else None
+        ok = inject_overlay_for_node(root, node_id, icon_bytes, ann, caption=cap)
         if not ok:
             warnings.append(f"missing_node:{node_id}")
 

@@ -13,10 +13,12 @@ from app.services.svg_overlay import format_annotation_line, overlay_icons_on_me
 logger = logging.getLogger(__name__)
 
 
-def build_overlay_tuples(selection: ComponentSelectionResult) -> list[tuple[str, bytes, str | None]]:
-    """Resolve icons + annotation strings per mapped node id."""
+def build_overlay_tuples(
+    selection: ComponentSelectionResult,
+) -> list[tuple[str, bytes, str | None, str | None]]:
+    """Resolve icons, cost line, and display caption per mapped node id."""
     mapping = mermaid_category_to_node_ids(selection.architecture_pattern)
-    overlays: list[tuple[str, bytes, str | None]] = []
+    overlays: list[tuple[str, bytes, str | None, str | None]] = []
     for cat, decision in selection.selections.items():
         node_id = mapping.get(cat)
         if not node_id:
@@ -27,7 +29,8 @@ def build_overlay_tuples(selection: ComponentSelectionResult) -> list[tuple[str,
             sla=decision.selected.sla,
             vendor=decision.selected.vendor,
         )
-        overlays.append((node_id, icon_bytes, ann))
+        cap = (decision.selected.name or "").strip() or None
+        overlays.append((node_id, icon_bytes, ann, cap))
     if not overlays:
         logger.debug("No overlays resolved for diagram pattern %s", selection.architecture_pattern)
     return overlays

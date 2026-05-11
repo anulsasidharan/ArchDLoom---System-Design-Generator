@@ -12,12 +12,13 @@ def fit_icon_in_box(
     icon_h: float,
     *,
     padding: float = 6.0,
-    max_fill_ratio: float = 0.42,
+    max_fill_ratio: float = 0.88,
 ) -> tuple[float, float, float]:
     """Return ``(scale, translate_x, translate_y)`` in the box's coordinate space.
 
-    The icon is scaled uniformly, centered in the box, and capped by ``max_fill_ratio`` of the
-    smaller box dimension so labels remain readable on Mermaid diagrams.
+    The icon is scaled uniformly and centered. ``max_fill_ratio`` caps the drawn size relative
+    to ``min(inner_w, inner_h)`` (after padding). Use a dedicated tall band for the icon when
+    the node also carries a text caption below the icon area.
     """
     if box_w <= 0 or box_h <= 0 or icon_w <= 0 or icon_h <= 0:
         return 1.0, 0.0, 0.0

@@ -6,6 +6,19 @@ import re
 
 from app.domain.components import ArchitecturePattern, ComponentSelectionResult
 
+# Roomier nodes so icon + caption layout is not cramped when Mermaid renders to SVG.
+_FLOWCHART_INIT = (
+    '%%{init: {"theme": "neutral", "flowchart": '
+    '{"padding": 26, "nodeSpacing": 58, "rankSpacing": 80, "htmlLabels": true}}}%%\n'
+)
+
+
+def _with_flowchart_init(diagram_body: str) -> str:
+    body = diagram_body.strip()
+    if body.startswith("%%{init:"):
+        return body + "\n"
+    return _FLOWCHART_INIT + body + "\n"
+
 
 def mermaid_category_to_node_ids(pattern: ArchitecturePattern) -> dict[str, str]:
     """Map ``category`` keys from ``ComponentSelectionResult.selections`` to Mermaid node ids."""
@@ -96,18 +109,18 @@ def generate_architecture_mermaid(
     """Return Mermaid `graph TB` (or mixed) source for the high-level architecture."""
     pattern = components.architecture_pattern
     if pattern == ArchitecturePattern.RAG_SYSTEM:
-        return _rag_diagram(components, title=title)
+        return _with_flowchart_init(_rag_diagram(components, title=title))
     if pattern == ArchitecturePattern.FINE_TUNING_PIPELINE:
-        return _fine_tuning_diagram(components, title=title)
+        return _with_flowchart_init(_fine_tuning_diagram(components, title=title))
     if pattern == ArchitecturePattern.REALTIME_INFERENCE:
-        return _realtime_inference_diagram(components, title=title)
+        return _with_flowchart_init(_realtime_inference_diagram(components, title=title))
     if pattern == ArchitecturePattern.AGENTIC_AI_SYSTEM:
-        return _agentic_diagram(components, title=title)
+        return _with_flowchart_init(_agentic_diagram(components, title=title))
     if pattern == ArchitecturePattern.EVENT_DRIVEN:
-        return _event_driven_diagram(components, title=title)
+        return _with_flowchart_init(_event_driven_diagram(components, title=title))
     if pattern == ArchitecturePattern.MICROSERVICES:
-        return _microservices_diagram(components, title=title)
-    return _three_tier_diagram(components, title=title)
+        return _with_flowchart_init(_microservices_diagram(components, title=title))
+    return _with_flowchart_init(_three_tier_diagram(components, title=title))
 
 
 def generate_aiml_supplementary_mermaid(
