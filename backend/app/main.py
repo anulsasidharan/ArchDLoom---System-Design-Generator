@@ -6,8 +6,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import components as components_routes
 from app.api.routes import generation as generation_routes
 from app.api.routes import health as health_routes
+from app.api.routes import projects as projects_routes
 from app.config import get_settings
 
 
@@ -44,6 +46,8 @@ def create_app() -> FastAPI:
     )
     app.include_router(health_routes.router)
     app.include_router(generation_routes.router, prefix="/api/v1")
+    app.include_router(projects_routes.router, prefix="/api/v1")
+    app.include_router(components_routes.router, prefix="/api/v1")
     return app
 
 
