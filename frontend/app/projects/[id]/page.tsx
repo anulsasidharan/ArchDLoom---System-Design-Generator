@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Layers, Clock, AlertCircle, Download } from "lucide-react";
 import { DiagramViewer } from "@/components/DiagramViewer";
@@ -38,9 +38,9 @@ function formatDate(iso: string) {
 export default function ProjectDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = use(params);
+  const { id } = params;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   const base = `${apiUrl}/api/v1`;
 
